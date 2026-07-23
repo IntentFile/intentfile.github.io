@@ -1,0 +1,68 @@
+/**
+ * Intent File - brand theme.
+ * A calm violet accent, larger prose measure, and a distinctive hero gradient.
+ */
+
+:root {
+  --vp-c-brand-1: #5b4bd6;
+  --vp-c-brand-2: #6d5efc;
+  --vp-c-brand-3: #8b7dff;
+  --vp-c-brand-soft: rgba(109, 94, 252, 0.14);
+
+  --vp-c-tip-1: var(--vp-c-brand-1);
+  --vp-c-tip-2: var(--vp-c-brand-2);
+  --vp-c-tip-soft: var(--vp-c-brand-soft);
+}
+
+.dark {
+  --vp-c-brand-1: #9a8dff;
+  --vp-c-brand-2: #8b7dff;
+  --vp-c-brand-3: #6d5efc;
+  --vp-c-brand-soft: rgba(138, 125, 255, 0.16);
+}
+
+/* Home hero: a solid brand-coloured name, no gradients, no glow blob. */
+:root {
+  --vp-home-hero-name-color: var(--vp-c-brand-1);
+  --vp-home-hero-name-background: transparent;
+
+  --vp-home-hero-image-background-image: transparent;
+  --vp-home-hero-image-filter: none;
+}
+
+/* Hero logo: 2.5x the base mark, scaled down responsively on smaller screens. */
+.VPHero .image-src {
+  width: 300px;
+  height: 300px;
+  max-width: 300px;
+  max-height: 300px;
+}
+
+@media (max-width: 959px) {
+  .VPHero .image-src {
+    width: 220px;
+    height: 220px;
+  }
+}
+
+@media (max-width: 639px) {
+  .VPHero .image-src {
+    width: 180px;
+    height: 180px;
+  }
+}
+
+/* Code blocks: slightly tighter, monospace numerals read better for a spec. */
+.vp-doc div[class*='language-'] {
+  border-radius: 10px;
+}
+
+/* Give the prose a bit more room to breathe on wide screens. */
+.vp-doc {
+  --vp-layout-max-width: 1440px;
+}
+
+/* Custom-block "spec note" flavour, used for normative statements. */
+.vp-doc .custom-block.info {
+  border-color: var(--vp-c-brand-3);
+}

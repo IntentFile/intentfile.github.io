@@ -1,0 +1,120 @@
+---
+title: Processes & forms
+description: Workflows with user tasks, decisions, service tasks, waits and boundary timers; the triggers that start them; task forms; and custom action buttons.
+---
+
+# Processes & forms
+
+## processes
+
+```yaml
+processes:
+  - name: OrderApproval
+    trigger: { onCreate: Order, when: "total > 0" }
+    steps:
+      - { name: managerReview, kind: userTask,    args: { assignee: manager, form: ApproveOrder } }
+      - { name: bigOrder,      kind: decision,    args: { if: "customer.creditLimit > 10000", then: cfoReview, else: activate } }
+      - { name: cfoReview,     kind: userTask,    args: { assignee: cfo, form: ApproveOrder } }
+      - { name: activate,      kind: serviceTask, args: { setRelationField: Status, value: 2, next: done } }
+      - { name: done,          kind: end }
+```
+
+Generates one process definition per `processes[]` entry (a standard workflow model plus its diagram layout, so a modeller renders it).
+
+Step kinds: `userTask`, `serviceTask`, `decision`, `script`, `wait`, `end`.
+
+### Service tasks
+
+Service-task shapes: `setField` / `setRelationField` (generated handlers that write a field or flip a status relation on a branch), and `delegate` (a reusable hand-written handler with injected `fields`). Set a status on the *branch* that reaches it, never on the shared task, so a reject path does not transit through the approved status.
+
+### Decision steps
+
+`if` + `then` are mandatory, `else` optional. `then` / `else` must name a declared step or the literal `end`; the parser validates this, so a typo fails at parse time rather than producing an invalid workflow. Without `else`, the gateway default falls through to the next step.
+
+A decision condition may walk **one hop** off the trigger entity (`customer.creditLimit > 10000`): a resolver step is generated before the gateway to load the related entity and rewrite the condition.
+
+### wait — park the process on a data event
+
+A `wait` step parks the process until an entity lifecycle event resumes it — a case waiting for a reply, a flow waiting for a payment, an order waiting for its goods receipt:
+
+```yaml
+steps:
+  - { name: requestInfo, kind: serviceTask, args: { setRelationField: Status, value: 4, next: awaitReply } }
+  - { name: awaitReply,  kind: wait, args: { onCreate: CaseMessage, via: case, when: "internal == false", next: work } }
+  - { name: work,        kind: userTask, args: { assignee: agent, form: WorkCase } }
+```
+
+- `onCreate | onUpdate: <Entity>` (exactly one; `onDelete` is rejected — a deleted record cannot resume a wait) names the resuming event.
+- `via: <relation>` — when the event entity is not the trigger entity itself: the event entity's to-one relation that walks back to the trigger entity (here `CaseMessage.case`). Omitted when the event entity *is* the trigger entity; same-model relations only.
+- `when:` — a single-comparison guard over the **event record** (`field ==|!= literal`), so e.g. an internal note does not resume the wait.
+
+Correlation rides an identifier the trigger listener already writes back, so a `wait` requires the process to declare a `trigger:`. It is **fail-soft**: no parked instance, or an instance already past the wait, is a no-op — never an error.
+
+### timeout / expire — boundary timers on a user task
+
+Two optional attributes on a `userTask`'s args give a flow a notion of time. Both route `then` like a decision branch:
+
+```yaml
+steps:
+  - name: approve
+    kind: userTask
+    args:
+      assignee: approver
+      form: ApproveQuotation
+      timeout: { after: P3D, then: remind }              # non-cancelling: the task STAYS claimable
+      expire:  { until: validUntil, then: markExpired }  # cancelling: the task is WITHDRAWN
+      next: done
+```
+
+- **`timeout: { after: <ISO-8601 duration>, then: <step> }`** — a non-cancelling boundary timer (`PT4H`, `P3D`): after the duration the `then` branch runs (a reminder / escalation) while the task stays claimable.
+- **`expire: { until: <field>, then: <step> }`** — a cancelling boundary timer driven by a `date` / `timestamp` field of the trigger entity: when the moment passes, the task is withdrawn and the flow continues at `then`. The date is **re-read at task entry**, so editing it mid-flow moves the timer. A `date` names the last valid day (the timer fires at the start of the next day); a `null` arms a far-future date so the timer never effectively fires.
+
+### trigger
+
+`trigger: { onCreate | onUpdate | onDelete: <Entity>, when: "<expr>" }` starts the process on that entity's lifecycle event:
+
+- the parser validates at most one event kind, and that the target is a declared entity;
+- the entity gains a back-reference column so the process starts at most once;
+- a generated listener loads the entity, applies the `when` guard (a single `field ==|!= literal`), starts the process, and writes the instance identifier back.
+
+The business key defaults to the entity PK but is configurable:
+
+```yaml
+trigger: { onCreate: Order, businessKey: orderNo, businessKeyStrategy: timestamp }
+```
+
+`businessKey` names which field becomes the started instance's business key; `businessKeyStrategy: timestamp` mints a `yyyyMMddHHmmss` value into that field when it is blank (the field must be `string` / `text`).
+
+### Task assignment
+
+A user task's `assignee` is a role / candidate-group name, or the literal **`assignee: personal`** to route the task to the **record owner's** inbox (requires the trigger entity to declare a `personal:` relation — see [scoped surfaces](/spec/surfaces)).
+
+## forms
+
+```yaml
+forms:
+  - name: ApproveOrder
+    forEntity: Order
+    fields: [orderDate, total, customer.name]   # fields or one-hop relation.field
+    actions: [approve, reject]                  # complete the task
+```
+
+Generates one form per `forms[]` entry. Controls are typed by looking each field up against the bound entity (string to a text input, integer / decimal to a number input, boolean to a checkbox, date to a date picker, and so on). Actions become buttons, coloured by name (approve to positive; reject / decline / delete / cancel to negative; save / submit to emphasised).
+
+## actions — custom buttons
+
+Developer-defined buttons that open a custom page — the escape hatch when a workflow or a generated screen is not enough:
+
+```yaml
+actions:
+  - name: OpenPortal
+    forEntity: Order
+    scope: entity            # per-record; 'page' = a whole-view toolbar button
+    page: /custom/portal.html
+```
+
+## See also
+
+- [Declarative glue](/spec/glue) — event-driven glue (`wait`, `timeout`, triggers) is generated as integration code alongside the process.
+- [Presentation](/spec/presentation) — the document view a process's status pill and inline task list appear on.
+- [Scoped surfaces & roles](/spec/surfaces) — `assignee: personal` and the roles a candidate group maps to.
