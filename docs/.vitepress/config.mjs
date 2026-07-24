@@ -81,6 +81,13 @@ export default defineConfig({
     plugins: [escapeMdAngleBrackets()],
   },
   head: [
+    // Google Analytics (gtag.js)
+    ['script', { async: '', src: 'https://www.googletagmanager.com/gtag/js?id=G-RFXCE7HRB2' }],
+    [
+      'script',
+      {},
+      "window.dataLayer = window.dataLayer || [];\nfunction gtag(){dataLayer.push(arguments);}\ngtag('js', new Date());\ngtag('config', 'G-RFXCE7HRB2');",
+    ],
     ['meta', { name: 'theme-color', content: '#6d5efc' }],
     ['meta', { property: 'og:type', content: 'website' }],
     ['meta', { property: 'og:title', content: 'The Intent File Specification' }],
