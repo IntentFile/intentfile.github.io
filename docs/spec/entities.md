@@ -1,6 +1,6 @@
 ---
 title: Entities & fields
-description: The data model - entities, fields, logical types, calculated values, document numbering, labels, presentation roles, checks, immutability and tree hierarchies.
+description: The data model - entities, fields, logical types, calculated values, document numbering, labels, presentation roles, attachments and snapshots, checks, immutability and tree hierarchies.
 ---
 
 # Entities & fields
@@ -155,7 +155,31 @@ Optional, and authoritative when set; inferred from structure otherwise.
   function: DocumentItem    # its line items (no "*Item" naming needed)
 ```
 
-Entity roles: `Document`, `DocumentItem`, `Master`, `Detail`, `List`, `Setting`, `Calendar`. Field role: `DocumentTitle`. Relation role: `EntityStatus` (a managed status badge). `Board`, `Gantt` and `Timeline` are reserved and rejected until those presentations are supported.
+Entity roles: `Document`, `DocumentItem`, `Master`, `Detail`, `List`, `Setting`, `Calendar`, `Attachment`, `Snapshot`. Field role: `DocumentTitle`. Relation role: `EntityStatus` (a managed status badge). `Board`, `Gantt` and `Timeline` are reserved and rejected until those presentations are supported.
+
+## Attachments and snapshots
+
+Two `function` roles attach **files** to a record. Both are composition children of the record they belong to.
+
+**`function: Attachment`** gives the master a *Files* panel — upload, download, delete. The entity's rows carry the file metadata; the binary content lives in the platform's document store:
+
+```yaml
+- name: CaseAttachment
+  function: Attachment
+  relations:
+    - { name: Case, kind: manyToOne, to: Case, composition: true, required: true }
+```
+
+**`function: Snapshot`** is the immutable, **versioned printed copy** of a document master — the frozen artefact regulations and audits want. Each generation renders the master through its [print template](/spec/presentation#printable-documents) and stores the result as the next version; the copies appear in the same panel, download-only (never uploaded or deleted by the user):
+
+```yaml
+- name: SalesInvoiceCopy
+  function: Snapshot
+  relations:
+    - { name: SalesInvoice, kind: manyToOne, to: SalesInvoice, composition: true, required: true }
+```
+
+A snapshot requires a **document** master (only a document has a print template to render from). Minting a copy is wired into the workflow: bind the generated snapshot handler (named `<Master>SnapshotGenerator`) as the `delegate:` of a [service task](/spec/processes#service-tasks) at the step that finalises the document — typically right after *issue*. Re-issuing after an amendment keeps the document's number and mints the next version, which pairs naturally with [`immutableWhen`](#immutablewhen-immutable-user-write-immutability) and an issue-stamped [document number](#document-numbering).
 
 ## Setting entities
 

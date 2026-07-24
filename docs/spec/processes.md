@@ -1,6 +1,6 @@
 ---
 title: Processes & forms
-description: Workflows with user tasks, decisions, service tasks, waits and boundary timers; the triggers that start them; task forms; and custom action buttons.
+description: Workflows with user tasks, decisions, service tasks, waits, boundary timers and abort-on-status; the triggers that start them; task forms; and custom action buttons.
 ---
 
 # Processes & forms
@@ -23,9 +23,13 @@ Generates one process definition per `processes[]` entry (a standard workflow mo
 
 Step kinds: `userTask`, `serviceTask`, `decision`, `script`, `wait`, `end`.
 
+### Step routing — the linear chain and `next:`
+
+Steps flow **linearly in declaration order**. Any step may override its successor with `args: { next: <step | end> }` — this is how two decision branches **converge** instead of the first falling through into the second (an `activate` branch routes to `done` so it never falls into the `cancel` branch declared after it). `next` must name a declared step or the literal `end`.
+
 ### Service tasks
 
-Service-task shapes: `setField` / `setRelationField` (generated handlers that write a field or flip a status relation on a branch), and `delegate` (a reusable hand-written handler with injected `fields`). Set a status on the *branch* that reaches it, never on the shared task, so a reject path does not transit through the approved status.
+Service-task shapes: `setField` / `setRelationField` (generated handlers that write a field or flip a status relation on a branch), and `delegate` (a handler referenced by name with injected `fields` — hand-written, or a generated one such as a [snapshot generator](/spec/entities#attachments-and-snapshots)). Set a status on the *branch* that reaches it, never on the shared task, so a reject path does not transit through the approved status.
 
 ### Decision steps
 
@@ -68,6 +72,27 @@ steps:
 
 - **`timeout: { after: <ISO-8601 duration>, then: <step> }`** — a non-cancelling boundary timer (`PT4H`, `P3D`): after the duration the `then` branch runs (a reminder / escalation) while the task stays claimable.
 - **`expire: { until: <field>, then: <step> }`** — a cancelling boundary timer driven by a `date` / `timestamp` field of the trigger entity: when the moment passes, the task is withdrawn and the flow continues at `then`. The date is **re-read at task entry**, so editing it mid-flow moves the timer. A `date` names the last valid day (the timer fires at the start of the next day); a `null` arms a far-future date so the timer never effectively fires.
+
+### abortOn — cancel the instance on a terminal status
+
+A running process should not outlive its document. `abortOn:` on the process cancels the **whole in-flight instance** — pending user tasks withdrawn, parked waits and armed boundary timers cancelled — the moment the trigger entity **transitions into** any of the listed status ids (the same transition event a [`transitions`](/spec/glue#transitions-guarded-status-flips) button or a workflow status set publishes):
+
+```yaml
+processes:
+  - name: QuotationFollowUp
+    trigger: { onCreate: Quotation }
+    abortOn: { status: [3, 4, 6], then: markVoid }   # accepted / rejected / expired
+    steps:
+      - { name: followUp, kind: userTask, args: { assignee: sales, form: FollowUp } }
+      - { name: done,     kind: end }
+      # abort-only cleanup - never routed to from the main flow:
+      - { name: markVoid, kind: serviceTask, args: { setRelationField: Status, value: 6 } }
+```
+
+- `status:` — one or more status ids of the trigger entity's `function: EntityStatus` relation; reaching any of them aborts.
+- `then:` (optional) — a single cleanup `serviceTask` (`setField` / `setRelationField`) that runs **only** on the abort path; it must not be reachable from the main flow. Omitted (or `end`) means terminate with no cleanup.
+
+Like `wait`, `abortOn` requires the process to declare a `trigger:` (correlation rides the instance identifier stamped on the record) and is **fail-soft** — no running instance is a no-op. This is the structural answer to orphaned inbox tasks: cancel a review the moment its document is voided elsewhere.
 
 ### trigger
 

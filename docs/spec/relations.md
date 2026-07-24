@@ -37,7 +37,7 @@ Composition is **opt-in** — most required FKs are plain associations, and comp
 - { name: Product, kind: manyToOne, to: Product, where: { Type: 1 } }
 ```
 
-- **`function: EntityStatus`** marks the relation as the entity's managed status badge; `init:` seeds its default at the database level (a race-free start). This relation is what [`immutableWhen`](/spec/entities#immutablewhen-immutable-user-write-immutability), [`transitions`](/spec/glue#transitions) and [`postings`](/spec/glue#postings) key on.
+- **`function: EntityStatus`** marks the relation as the entity's managed status badge; `init:` seeds its default at the database level (a race-free start). This relation is what [`immutableWhen`](/spec/entities#immutablewhen-immutable-user-write-immutability), [`transitions`](/spec/glue#transitions-guarded-status-flips) and [`postings`](/spec/glue#postings-source-document-to-ledger) key on.
 - **`dependsOn`** links one dropdown to another: `filterBy` narrows the options to those matching the parent selection; `valueFrom` copies a value from the referenced record (a snapshot).
 - **`where`** filters the dropdown to options matching a static condition.
 

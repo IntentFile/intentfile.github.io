@@ -149,9 +149,9 @@ These rules keep the file diff-stable, safe to parse, and friendly for both huma
 
 ## In this section
 
-- [Entities & fields](/spec/entities) — the data model: fields, types, calculated values, document numbering, labels, checks, immutability, hierarchies.
+- [Entities & fields](/spec/entities) — the data model: fields, types, calculated values, document numbering, labels, checks, immutability, hierarchies, attachments and snapshots.
 - [Relations & multi-model](/spec/relations) — relations, composition, many-to-many, and referencing entities owned by another model.
-- [Processes & forms](/spec/processes) — workflows with user tasks, decisions, waits and boundary timers; task forms and custom action buttons.
+- [Processes & forms](/spec/processes) — workflows with user tasks, decisions, waits, boundary timers and abort-on-status; task forms and custom action buttons.
 - [Presentation](/spec/presentation) — reports, charts, dashboard widgets, calendar/range/slot views, chat-threaded documents, and printable documents.
 - [Declarative glue](/spec/glue) — notifications, schedules, integrations, webhooks, roll-ups, settlements, expansions, generates, transitions and postings.
 - [Scoped surfaces & roles](/spec/surfaces) — per-user and per-partner row-scoped surfaces, sensitive-field stripping, and permissions.

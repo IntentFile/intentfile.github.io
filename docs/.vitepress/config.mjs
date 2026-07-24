@@ -55,8 +55,23 @@ function escapeMdAngleBrackets() {
   }
 }
 
+// Heading slugs: strip punctuation (including em-dashes) so an "abortOn — cancel ..."
+// heading anchors as #aborton-cancel-... - the form every internal link uses. The default
+// slugifier keeps the em-dash, silently breaking those anchors.
+const slugify = (s) =>
+  s
+    .trim()
+    .toLowerCase()
+    .replace(/[\u2000-\u206f\u2e00-\u2e7f\\'!"#$%&()*+,.\/:;<=>?@[\]^`{|}~]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '')
+
 export default defineConfig({
   title: 'Intent File',
+  markdown: {
+    anchor: { slugify },
+  },
   description:
     'The Intent File Specification - one declarative YAML file that describes a whole application, one altitude above the models a generator produces from it.',
   lang: 'en-US',

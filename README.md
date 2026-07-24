@@ -7,6 +7,13 @@ above the models a generator produces from it.
 Static site built with [VitePress](https://vitepress.dev/), deployed to GitHub Pages at
 [intentfile.org](https://intentfile.org).
 
+## Contributing
+
+The specification evolves through pull requests against this repository — see
+[CONTRIBUTING.md](CONTRIBUTING.md) for the flow (editorial fixes go straight to a PR;
+semantic changes start with a proposal issue). All participation is covered by the
+[Code of Conduct](CODE_OF_CONDUCT.md).
+
 ## Development
 
 ```

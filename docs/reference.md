@@ -21,6 +21,8 @@ The quick lookup surface: one line and a minimal snippet per construct. For rule
 | [`relations` / `composition`](/spec/relations#relations) | associations and master-detail compositions |
 | [`uses`](/spec/relations#multi-model-applications) | reuse entities owned by another intent model |
 | [`processes`](/spec/processes#processes) | workflows: user tasks, decisions, waits, boundary timers |
+| [`abortOn`](/spec/processes#aborton-cancel-the-instance-on-a-terminal-status) | cancel the running instance when the document reaches a terminal status |
+| [`function: Attachment` / `Snapshot`](/spec/entities#attachments-and-snapshots) | a Files panel / immutable versioned printed copies |
 | [`forms`](/spec/processes#forms) | task data-entry pages |
 | [`actions`](/spec/processes#actions-custom-buttons) | developer-defined buttons opening custom pages |
 | [`view`](/spec/presentation#view-calendar-range-slots) | calendar / range / slot-booking pages |
