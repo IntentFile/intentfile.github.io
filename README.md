@@ -7,12 +7,17 @@ above the models a generator produces from it.
 Static site built with [VitePress](https://vitepress.dev/), deployed to GitHub Pages at
 [intentfile.org](https://intentfile.org).
 
+The **normative specification** lives in
+[IntentFile/intent-specification](https://github.com/IntentFile/intent-specification);
+this site renders the current version. Propose changes to the format there — website
+improvements are PRs here.
+
 ## Contributing
 
-The specification evolves through pull requests against this repository — see
-[CONTRIBUTING.md](CONTRIBUTING.md) for the flow (editorial fixes go straight to a PR;
-semantic changes start with a proposal issue). All participation is covered by the
-[Code of Conduct](CODE_OF_CONDUCT.md).
+Website improvements (wording, examples, navigation, theme) are pull requests here — see
+[CONTRIBUTING.md](CONTRIBUTING.md). Changes to the format itself are proposed in
+[IntentFile/intent-specification](https://github.com/IntentFile/intent-specification).
+All participation is covered by the [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## Development
 

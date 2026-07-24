@@ -1,8 +1,15 @@
 # Contributing
 
-Thank you for your interest in the Intent File Specification! The specification
-evolves in the open: every change — from a typo fix to a new DSL construct — is
-proposed, discussed and merged as a **pull request** against this repository.
+Thank you for your interest in the Intent File Specification!
+
+**This repository is the website** (intentfile.org). The **normative specification lives
+in [IntentFile/intent-specification](https://github.com/IntentFile/intent-specification)**
+— propose changes to the format itself there (issue or proposal first, then a PR; see its
+CONTRIBUTING). Once a specification change merges, the rendered chapters here are updated
+to match.
+
+Website changes — wording, examples, navigation, theme — are pull requests against this
+repository.
 
 By participating you agree to our [Code of Conduct](CODE_OF_CONDUCT.md).
 Contributions are accepted under the repository's [Apache 2.0 license](LICENSE).
@@ -25,23 +32,12 @@ Typos, wording, broken links, clearer examples, better cross-references —
 anything that does **not** change what a conforming file or generator must do.
 Open a pull request directly; no prior issue needed.
 
-### 2. Specification changes — open an issue first
+### 2. Specification changes — go to the spec repository
 
-Anything that changes the meaning of the format: a new construct or attribute,
-new allowed values, changed semantics, deprecations. For these, **open an issue
-first** describing:
-
-- **The problem** — what cannot be expressed today, with a concrete scenario.
-- **The proposed shape** — the YAML an author would write.
-- **The expected behaviour** — what a conforming generator must produce, stated
-  platform-neutrally.
-- **Prior art** — how the scenario is handled today (hand-written code, a
-  workaround, another format).
-
-Once the direction is agreed in the issue, open a PR that updates the relevant
-chapter **and** the DSL reference (and an example, if the construct benefits
-from one). A construct without at least one implementation proving it out is
-normally marked *planned* in the reference rather than specified as required.
+Anything that changes the meaning of the format: a new construct or attribute, new
+allowed values, changed semantics, deprecations. These are proposed and merged in
+[IntentFile/intent-specification](https://github.com/IntentFile/intent-specification);
+the chapters here render the current version and follow it.
 
 ## Ground rules for spec text
 
@@ -71,8 +67,6 @@ same build on merge.
 
 ## Review and merging
 
-Maintainers review every PR. Editorial changes merge on one approval;
-specification changes merge when the discussion in the linked issue has
-converged and a maintainer approves. Substantial semantic changes are batched
-into a version bump of the specification rather than applied silently to the
-current version.
+Maintainers review every PR; website changes merge on one approval. Chapters under
+`docs/spec/` track the normative specification — a PR here that would change the format's
+meaning is redirected to the specification repository.

@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Propose a specification change
+    url: https://github.com/IntentFile/intent-specification/issues/new/choose
+    about: Changes to the format itself (new constructs, semantics) are proposed in the specification repository.

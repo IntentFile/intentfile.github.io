@@ -5,7 +5,7 @@ description: What the .intent file is, the three altitudes it sits above, the ge
 
 # The Intent File Specification
 
-Version 1 · vendor-neutral
+Version 1 · vendor-neutral · normative source: [IntentFile/intent-specification](https://github.com/IntentFile/intent-specification)
 
 A single `.intent` file at a project root is the source of truth for a whole application. It is authored one **altitude above** the models a platform generates from: instead of hand-authoring a data model, process definitions, forms, reports, roles and seed data separately, you author **all of them** from one YAML document, and a conforming generator produces them for you.
 
