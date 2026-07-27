@@ -1,6 +1,6 @@
 ---
 title: Declarative glue
-description: notifications, schedules, integrations, inbound webhooks, roll-ups, settlements, expansions, generates, transitions and postings - declared in the intent, generated as integration code, never hand-written.
+description: notifications, schedules, integrations, inbound webhooks, roll-ups, keyed aggregates, settlements, expansions, generates, transitions, postings and event-driven row posting - declared in the intent, generated as integration code, never hand-written.
 ---
 
 # Declarative glue
@@ -111,6 +111,29 @@ A count roll-up keeps a counter on a parent current on the child's create / dele
 
 Roll-ups are recompute-on-event (self-healing), so they are **eventually consistent, not transactionally exact** under heavy concurrency.
 
+## aggregates — keyed cross-entity totals
+
+A running total over one entity's rows, grouped by one or more of its to-one relations and materialised into a **separate entity** keyed by the same relations:
+
+```yaml
+aggregates:
+  - name: onHand
+    of: StockMovement           # the source rows
+    op: sum                     # sum (default) | count
+    sum: quantity               # the summed field
+    by: [Product, Store]        # the grouping keys
+    into: ProductAvailability   # the target entity, keyed by the same relations
+    field: onHand               # the target field holding the total
+```
+
+Where [`rollups`](#rollups-denormalised-parent-totals) denormalise a total onto the *parent* of a composition - one key, the child's own parent relation - an aggregate is keyed by **several** relations and lands in **its own entity**. That makes the result a first-class row: other records can reference it, lists can show it, and a picker can point at it. On-hand stock per product and store, open exposure per customer, remaining allowance per employee and year.
+
+Every name in `by` must be a to-one relation of both the source and the target. On each create, update and delete of a source row the target row for that row's key-tuple is upserted and the total recomputed from every source row sharing the tuple, so a re-delivered event converges instead of accumulating. A source row with a grouping key unset belongs to no tuple and is ignored.
+
+Aggregates are recompute-on-event, so like roll-ups they are **eventually consistent, not transactionally exact**. The recompute writes only the aggregate column, so it never reverts a concurrent edit to another column of the target row. An aggregate of a `sensitive` field is itself sensitive wherever its target carries a personal surface - hiding a value and publishing its total would be a distinction without a difference.
+
+Changing a grouping key on an existing source row moves it between tuples; recomputing the tuple it *left* is not yet supported, so a source whose keys are edited after the fact can leave a stale total behind. Append-only sources - ledgers, the primary use - are unaffected.
+
 ## settlements — payment allocation
 
 Auto-allocate payments across open invoices — the accounts-receivable pattern. Pair it with a `rollups` sum entry that maintains `paid` / `balance` / status.
@@ -216,6 +239,32 @@ postings:
     reverses: docPosting                                 # inherit + negate the sibling's items
     storno: Storno                                       # the self-link field on the created Entry
 ```
+
+## posts — derived rows on an event
+
+Emit rows into a ledger or journal when a document reaches a status, mapped from the document and its line items:
+
+```yaml
+posts:
+  - name: goodsReceiptLedger
+    event: POSTED               # a status value of the source, or `create`
+    forEach: items              # the composition child to iterate (omit for one row per record)
+    into: StockMovement         # the target entity
+    idempotentBy: GoodsReceipt  # the target's back-reference to the source
+    set:
+      Date:         Receipt.Date
+      Store:        Receipt.Store
+      Product:      item.Product
+      Quantity:     item.Quantity
+      Direction:    1
+      GoodsReceipt: Receipt.Id
+```
+
+A `set` value is a constant, `<Source>.<field>`, `item.<field>`, or an expression over those - so a sign flip (`-item.Quantity`) or a derived amount needs no code. Several entries under one event emit several rows per item: a stock transfer posts an outgoing and an incoming movement from one document.
+
+`idempotentBy` names the target's to-one relation back to the source. It is both written and used as the skip condition, so a re-delivered event does not double-post. Rows go through the target's ordinary write path, so the target's own numbering, validations and derived fields still apply.
+
+Compare with [`generates`](#generates-create-from): that creates ONE document from a user action, while `posts` emits N mapped rows automatically and idempotently on an event.
 
 ## Guardrails
 

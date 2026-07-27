@@ -206,6 +206,46 @@ Row-level and document-level validations, enforced on write / on a status transi
 
 `exactlyOne` runs on every user write; `itemsMin` / `itemsSumEqual` are gated on a status transition, so drafting stays unconstrained and a failing transition aborts with the message.
 
+### kind: guard — a precondition over an aggregate
+
+A guard compares a keyed [aggregate](/spec/glue#aggregates-keyed-cross-entity-totals) against a minimum and decides what a violating write does:
+
+```yaml
+- name: StockMovement
+  checks:
+    - kind: guard
+      aggregate: onHand                 # an `aggregates` entry whose `of` is THIS entity
+      minimum: 0                        # recomputed total (prior rows + this row) must stay >= minimum
+      message: "Insufficient stock"
+      enabledBy: BLOCK_NEGATIVE_STOCK   # optional: enforced only while this configuration key is "true"
+- name: SalesOrder
+  checks:
+    - kind: guard
+      aggregate: openExposure
+      minimum: 0
+      outcome: task                     # accept the write, mark it for a human step
+      marker: withinCredit
+- name: LeaveRequest
+  checks:
+    - kind: guard
+      aggregate: remaining
+      minimum: 0
+      outcome: reject                   # accept the write, file it already rejected
+      setStatus: 4
+```
+
+| `outcome` | Companion attribute | A violating write |
+| --- | --- | --- |
+| `block` (default) | - | is rejected with `message`; nothing is stored |
+| `task` | `marker:` a boolean field | is stored; `marker` is set `false` (and `true` whenever the guard holds) |
+| `reject` | `setStatus:` a status seed id | is stored; the record's status relation is set to that value |
+
+One outcome would have fitted exactly one real rule. Negative stock wants the write refused; a credit-limit breach wants the order accepted and parked for a human; an over-allowance leave request wants to be filed already rejected.
+
+The total is recomputed from the guarded entity's own rows for the incoming record's key-tuple - excluding the record being updated - rather than read from the materialised aggregate, so the decision cannot race the aggregate's maintenance. The guarded entity must be the aggregate's own source.
+
+`outcome: task` stamps a flag; it does not create or route to a task. A workflow [decision](/spec/processes#decision-steps) reads the marker and routes the record - the two constructs compose, and the guard is the part that computes.
+
 ## immutableWhen / immutable — user-write immutability
 
 ```yaml
