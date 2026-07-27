@@ -111,6 +111,8 @@ A count roll-up keeps a counter on a parent current on the child's create / dele
 
 Roll-ups are recompute-on-event (self-healing), so they are **eventually consistent, not transactionally exact** under heavy concurrency.
 
+The parent may be owned by **another model**. When the roll-up's `via` relation is a cross-model reference, the child stays local - it owns the event that drives the recompute - while the parent's coordinates come from the owner's model, so a time-tracking model can maintain an `actualHours` total on a project the projects model owns. The referenced model must be declared in `uses`, and the parent field is validated against the owner's model at generation time; an unresolvable roll-up is reported rather than dropped silently. The `capacity` / `balance` / `status` variants stay local-only, since they read the parent's own limit and status values.
+
 ## aggregates — keyed cross-entity totals
 
 A running total over one entity's rows, grouped by one or more of its to-one relations and materialised into a **separate entity** keyed by the same relations:
