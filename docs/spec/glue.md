@@ -132,7 +132,7 @@ Every name in `by` must be a to-one relation of both the source and the target. 
 
 Aggregates are recompute-on-event, so like roll-ups they are **eventually consistent, not transactionally exact**. The recompute writes only the aggregate column, so it never reverts a concurrent edit to another column of the target row. An aggregate of a `sensitive` field is itself sensitive wherever its target carries a personal surface - hiding a value and publishing its total would be a distinction without a difference.
 
-Changing a grouping key on an existing source row moves it between tuples; recomputing the tuple it *left* is not yet supported, so a source whose keys are edited after the fact can leave a stale total behind. Append-only sources - ledgers, the primary use - are unaffected.
+Changing a grouping key MOVES a source row between tuples, and both sides are repaired: the tuple it joined is recomputed from the row's own change, and the tuple it left is recomputed too, so no tuple keeps a contribution from a row that is no longer in it. The previous keys cannot be recovered after the write, so a conforming generator observes them before it. A tuple whose last contributing row leaves keeps its target row with a zero total rather than disappearing.
 
 ## settlements — payment allocation
 
