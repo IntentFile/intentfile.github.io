@@ -29,7 +29,9 @@ Steps flow **linearly in declaration order**. Any step may override its successo
 
 ### Service tasks
 
-Service-task shapes: `setField` / `setRelationField` (generated handlers that write a field or flip a status relation on a branch), and `delegate` (a handler referenced by name with injected `fields` — hand-written, or a generated one such as a [snapshot generator](/spec/entities#attachments-and-snapshots)). Set a status on the *branch* that reaches it, never on the shared task, so a reject path does not transit through the approved status.
+Service-task shapes: `setField` / `setRelationField` (generated handlers that write a field or flip a status relation on a branch), `notify` (the step's work IS an outbound message — see [the notify block](/spec/glue#the-notify-block-and-attach-print)), and `delegate` (a handler referenced by name with injected `fields` — hand-written, or a generated one such as a [snapshot generator](/spec/entities#attachments-and-snapshots)). Set a status on the *branch* that reaches it, never on the shared task, so a reject path does not transit through the approved status.
+
+A `notify` service task stands alone: it cannot carry another action (`setField`, `setRelationField`, `call`, `delegate`) on the same step. Sending is the step's whole purpose, and a step that both writes and sends hides which of the two failed.
 
 ### Decision steps
 

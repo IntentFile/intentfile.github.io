@@ -36,7 +36,7 @@ notifications:
     body: "The order changed."
 ```
 
-`to` and every `{placeholder}` resolve a literal, a direct field, or a one-hop `relation.field` of a to-one relation. `when:` supports a single `field ==|!= literal` guard. Multi-hop paths (`a.b.c`) are rejected with a clear message.
+`to` and every `{placeholder}` resolve a literal, a direct field, or a one-hop `relation.field` of a to-one relation. `when:` supports a single `field ==|!= literal` guard. Multi-hop paths (`a.b.c`) are rejected with a clear message. Everything below about the shared notify block — `attach: print`, `forEach`, the failure semantics — applies to a `notifications[]` entry too.
 
 ## The notify block — and `attach: print`
 
@@ -116,6 +116,7 @@ schedules:
       to: ops@example.com
       subject: "Stale order {id} for {customer.name}"
       body: "This order is stale."
+      # the full notify block applies here: attach: print for the row's document, forEach to fan out
 ```
 
 The `generate` variant creates a record through the **target's** own layer (so numbering, status init and calculated fields fire); the target may be cross-model via a `uses:` alias, and it may fan out `children`:
@@ -268,7 +269,13 @@ transitions:
     when: "Paid == 0"             # optional guard: <Field> ==|!= <number>
     label: Void
     icon: ban
+    notify:                       # optional: tell the counterparty once the flip has committed
+      to: Customer.email
+      subject: "Invoice {number} was voided"
+      body: "The invoice has been cancelled."
 ```
+
+A transition may carry a [notify block](#the-notify-block-and-attach-print) — "on Void, tell the customer" — attempted after the flip has committed, and unable to fail it.
 
 ## postings — source document to ledger
 
