@@ -66,6 +66,25 @@ Add **`attach: print`** and the message carries the record's **own document** �
 A recipient that resolves to no address is a **no-op** — recorded and skipped, so a record with nobody to notify never stalls a flow. A `transitions[].notify` can never fail its transition: the status flip is the contract and is already applied when the message is attempted, so a delivery failure is recorded and the transition still succeeds. A sending process step, whose whole purpose *is* the message, fails instead — so the platform's own retry applies.
 :::
 
+### One message per related row: `forEach`
+
+Some sends are per-row rather than per-record — a payroll run mails every payslip to its own employee. `forEach:` names a related entity and the block sends one message per row of it; every path (recipient, placeholders, `attach`) then resolves against the **row**.
+
+```yaml
+    notify:
+      forEach: Payslip                              # rows whose to-one FK points at this record
+      to: Employee.email                            # the ROW's employee
+      subject: "Payslip {PayrollRun.month}"         # one hop from the ROW
+      body: "Dear {Employee.name}, net pay {net}."  # the ROW's own field
+      attach: print                                 # the ROW's own document
+```
+
+The named entity must have exactly **one** to-one relation back to the record: none means the rows are unrelated, several make the intended set ambiguous, and both are rejected rather than mailing a silently wrong set of recipients.
+
+::: warning A fan-out never fails its activity
+It is fail-soft per row at every call site, including the ones that otherwise fail: a row with no recipient is skipped, a delivery failure is recorded, and the activity completes with a per-row summary. Retrying would resend to every recipient already served — a partial fan-out cannot be made idempotent, so the summary is the report.
+:::
+
 A sending `serviceTask` stands alone: `notify` cannot be combined with another action (`setField`, `setRelationField`, `call`, `delegate`) on the same step — give the send its own step and route to it.
 
 ```yaml
