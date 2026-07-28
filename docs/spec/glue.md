@@ -40,7 +40,7 @@ notifications:
 
 ## The notify block — and `attach: print`
 
-`to` / `subject` / `body` is one reusable **notify block**, not a shape peculiar to `notifications`. The same block is authored at every place an intent can act on a record:
+`to` / `subject` / `body` (+ `channel`) is one reusable **notify block**, not a shape peculiar to `notifications`. The same block is authored at every place an intent can act on a record:
 
 | Where | The record it is about | It sends |
 | --- | --- | --- |
