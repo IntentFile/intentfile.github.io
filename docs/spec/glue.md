@@ -38,6 +38,50 @@ notifications:
 
 `to` and every `{placeholder}` resolve a literal, a direct field, or a one-hop `relation.field` of a to-one relation. `when:` supports a single `field ==|!= literal` guard. Multi-hop paths (`a.b.c`) are rejected with a clear message.
 
+## The notify block — and `attach: print`
+
+`to` / `subject` / `body` is one reusable **notify block**, not a shape peculiar to `notifications`. The same block is authored at every place an intent can act on a record:
+
+| Where | The record it is about | It sends |
+| --- | --- | --- |
+| `notifications[]` | the event record | on create / update / delete |
+| `schedules[].notify` | each matched row | on every cron tick, per row |
+| `transitions[].notify` | the transitioned record | after the status flip commits |
+| a `serviceTask`'s `args.notify` | the process's trigger record | when the flow reaches that step |
+
+Add **`attach: print`** and the message carries the record's **own document** — the record rendered through its [print template](/spec/presentation#printable-documents) and attached. This is the declarative form of the most common outbound action a business document has: the invoice to its customer, the payslip to its employee, a reminder that carries the invoice it is about.
+
+```yaml
+    notify:
+      to: Customer.email                 # literal / direct field / one-hop relation.field
+      subject: "Invoice {number}"        # {field} and {relation.field} interpolation
+      body: "Dear {Customer.name}, please find invoice {number} attached."
+      attach: print                      # render THIS record's print template and attach it
+      language: bg                       # optional print-template language
+```
+
+`attach`'s only value is `print`, and the entity must be a **document** (a header with a line-items child) — that is the shape a print template exists for. Attaching the print of a plain entity is rejected up front rather than silently sending a message without the document it promised. The attachment comes from the record's own data through the same path the interactive print takes, so a document mailed and a document printed are the same document.
+
+::: tip Failure semantics, per call site
+A recipient that resolves to no address is a **no-op** — recorded and skipped, so a record with nobody to notify never stalls a flow. A `transitions[].notify` can never fail its transition: the status flip is the contract and is already applied when the message is attempted, so a delivery failure is recorded and the transition still succeeds. A sending process step, whose whole purpose *is* the message, fails instead — so the platform's own retry applies.
+:::
+
+A sending `serviceTask` stands alone: `notify` cannot be combined with another action (`setField`, `setRelationField`, `call`, `delegate`) on the same step — give the send its own step and route to it.
+
+```yaml
+processes:
+  - name: InvoiceIssue
+    trigger: { onCreate: Invoice }
+    steps:
+      - { name: issue, kind: userTask, args: { assignee: issuer, setRelationField: Status, value: 3, next: mailIt } }
+      - name: mailIt
+        kind: serviceTask
+        args:
+          notify: { to: Customer.email, subject: "Invoice {number}", body: "Attached.", attach: print }
+          next: end
+      - { name: end, kind: end }
+```
+
 ## schedules
 
 Cron reminders / cleanups — query an entity and act per matching row. Exactly one of `notify` or `generate` per row.

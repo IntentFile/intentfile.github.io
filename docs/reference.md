@@ -31,6 +31,7 @@ The quick lookup surface: one line and a minimal snippet per construct. For rule
 | [`reports`](/spec/presentation#reports) | aggregations, charts, dashboard KPI tiles, balance reports |
 | [`widgets`](/spec/presentation#widgets-custom-dashboard-tiles) | custom KPI / embedded-page dashboard tiles |
 | [`notifications`](/spec/glue#notifications) | email on create / update / delete |
+| [the notify block / `attach: print`](/spec/glue#the-notify-block-and-attach-print) | send a message about a record - with the record's own document attached - from a process step, a transition or a schedule |
 | [`schedules`](/spec/glue#schedules) | cron: notify or generate records per matching row |
 | [`integrations`](/spec/glue#integrations-outbound-http) | outbound HTTP on a data change |
 | [`inbound`](/spec/glue#inbound-webhooks) | a webhook that creates records |
