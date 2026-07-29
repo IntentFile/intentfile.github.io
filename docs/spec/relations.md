@@ -39,6 +39,19 @@ Composition is **opt-in** — most required FKs are plain associations, and comp
 
 - **`function: EntityStatus`** marks the relation as the entity's managed status badge; `init:` seeds its default at the database level (a race-free start). This relation is what [`immutableWhen`](/spec/entities#immutablewhen-immutable-user-write-immutability), [`transitions`](/spec/glue#transitions-guarded-status-flips) and [`postings`](/spec/glue#postings-source-document-to-ledger) key on.
 - **`dependsOn`** links one dropdown to another: `filterBy` narrows the options to those matching the parent selection; `valueFrom` copies a value from the referenced record (a snapshot).
+- **Conditional source** (field only): `valueFrom` may be `{ by: <path>, cases: { <literal>: <property> }, default: <property>? }` — the copied property is picked by a classifier resolved from the `by` path: an own property, a one-hop `<Relation>.<property>` (the related record is fetched), or — on a document item — a path starting at the composition parent relation, i.e. the open document header. No matching case and no `default` = no copy.
+
+```yaml
+- name: price
+  type: decimal
+  dependsOn:
+    relation: Product
+    valueFrom:
+      by: SalesOrder.Customer.priceLevel     # the open document's customer carries the classifier
+      cases: { 1: wholesalePrice, 2: retailPrice }
+      default: retailPrice
+```
+
 - **`where`** filters the dropdown to options matching a static condition.
 
 ## Many-to-many

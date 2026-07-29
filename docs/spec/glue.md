@@ -295,6 +295,21 @@ postings:
       - { Account: rule(vatAccount),        credit: "Vat", when: "Vat != 0" }
 ```
 
+The trigger is `onTransition` — a status write, with the `when` status guard mandatory — or **`onCreate`**, for a source document with **no status lifecycle at all**: a booked payment's only event is being created, and it is exactly the document an accountant expects posted. `when` stays optional there as a plain `<Property> == <number>` guard; an `onCreate` posting reacts to the source's create event.
+
+```yaml
+postings:
+  - name: customerPaymentPosting
+    event: { onCreate: CustomerPayment, model: customer-payments }   # no status, no guard
+    creates: JournalEntry
+    backReference: CustomerPayment
+    map: { entryDate: date, reason: "Payment {number}" }
+    rule: { entity: PostingRule, match: { documentType: "Customer Payment" } }
+    items:
+      - { Account: rule(bankAccount),       debit: "Amount" }
+      - { Account: rule(receivableAccount), credit: "Amount" }
+```
+
 A second posting can **reverse** the first (a reversal / credit) when the source is voided — pair it with the `transitions` void that flips the source into its void status. The reversal inherits `creates` / `backReference` / `rule` / `map` / `items` from the sibling it names, negates every item amount on the **same** side, links back to the original through a `storno` self-relation, and is fail-soft:
 
 ```yaml

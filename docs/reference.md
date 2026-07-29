@@ -41,7 +41,7 @@ The quick lookup surface: one line and a minimal snippet per construct. For rule
 | [`expansions`](/spec/glue#expansions-child-rows-from-a-date-span) | generated child rows per day / week / month |
 | [`generates`](/spec/glue#generates-create-from) | one-click document-from-document cloning |
 | [`transitions`](/spec/glue#transitions-guarded-status-flips) | guarded on-demand status flips (void / cancel / reopen) |
-| [`postings`](/spec/glue#postings-source-document-to-ledger) | declarative source-document to balanced-document posting |
+| [`postings`](/spec/glue#postings-source-document-to-ledger) | declarative source-document to balanced-document posting - on a status transition, or on create for a lifecycle-less source |
 | [`aggregates`](/spec/glue#aggregates-keyed-cross-entity-totals) | keyed cross-entity totals materialised into their own entity |
 | [`posts`](/spec/glue#posts-derived-rows-on-an-event) | derived ledger rows emitted idempotently on an event |
 | [`personal` / `partner`](/spec/surfaces#personal-and-partner-surfaces) | per-user and per-partner row-scoped surfaces |
