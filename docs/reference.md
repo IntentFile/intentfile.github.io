@@ -11,10 +11,13 @@ The quick lookup surface: one line and a minimal snippet per construct. For rule
 | --- | --- |
 | [`entities`](/spec/entities) | tables + CRUD UI + a generated data layer & API |
 | [field / relation attributes](/spec/entities#fields) | uniqueness, layout, read-only, dropdown filtering, cascades |
+| [`pattern`](/spec/entities#fields) | an input-format regular expression enforced in the UI and server-side |
+| [`dependsOn`](/spec/relations) | link a dropdown to another, copy a value from the referenced record, or default a line from the open document header |
 | [`function`](/spec/entities#function-the-presentation-role) | an explicit presentation role (Document, Setting, ...) |
 | [`label`](/spec/entities#label-a-stored-display-name) | a stored, read-only display name for lookups |
 | [`number`](/spec/entities#document-numbering) | a platform-numbered, gap-free document field |
 | [`checks`](/spec/entities#checks-declarative-validations) | cross-field / cross-line validations |
+| [`checks: kind: guard`](/spec/entities#kind-guard-a-precondition-over-an-aggregate) | a precondition over an aggregate: block, mark for a task, or reject |
 | [`immutableWhen` / `immutable`](/spec/entities#immutablewhen-immutable-user-write-immutability) | reject user writes in a status / append-only |
 | [`hierarchy` / `leafOnly`](/spec/entities#hierarchy-leafonly-tree-entities) | tree entities, leaf-only references |
 | [calculated fields](/spec/entities#calculated-fields) | server + UI-evaluated expressions, date helpers, call-outs |
@@ -30,6 +33,8 @@ The quick lookup surface: one line and a minimal snippet per construct. For rule
 | [`reports`](/spec/presentation#reports) | aggregations, charts, dashboard KPI tiles, balance reports |
 | [`widgets`](/spec/presentation#widgets-custom-dashboard-tiles) | custom KPI / embedded-page dashboard tiles |
 | [`notifications`](/spec/glue#notifications) | email on create / update / delete |
+| [`notify.forEach`](/spec/glue#one-message-per-related-row-foreach) | fan the block out over a related collection: one message per row |
+| [the notify block / `attach: print`](/spec/glue#the-notify-block-and-attach-print) | send a message about a record - with the record's own document attached - from a process step, a transition or a schedule |
 | [`schedules`](/spec/glue#schedules) | cron: notify or generate records per matching row |
 | [`integrations`](/spec/glue#integrations-outbound-http) | outbound HTTP on a data change |
 | [`inbound`](/spec/glue#inbound-webhooks) | a webhook that creates records |
@@ -38,7 +43,9 @@ The quick lookup surface: one line and a minimal snippet per construct. For rule
 | [`expansions`](/spec/glue#expansions-child-rows-from-a-date-span) | generated child rows per day / week / month |
 | [`generates`](/spec/glue#generates-create-from) | one-click document-from-document cloning |
 | [`transitions`](/spec/glue#transitions-guarded-status-flips) | guarded on-demand status flips (void / cancel / reopen) |
-| [`postings`](/spec/glue#postings-source-document-to-ledger) | declarative source-document to balanced-document posting |
+| [`postings`](/spec/glue#postings-source-document-to-ledger) | declarative source-document to balanced-document posting - on a status transition, or on create for a lifecycle-less source |
+| [`aggregates`](/spec/glue#aggregates-keyed-cross-entity-totals) | keyed cross-entity totals materialised into their own entity |
+| [`posts`](/spec/glue#posts-derived-rows-on-an-event) | derived ledger rows emitted idempotently on an event |
 | [`personal` / `partner`](/spec/surfaces#personal-and-partner-surfaces) | per-user and per-partner row-scoped surfaces |
 | [`seeds`](/spec/data#seeds) | initial data, CSV-backed sets, translations |
 | [`multilingual` / `languages`](/spec/data#multilingual-data) | translation tables + read-time translation overlay |

@@ -34,8 +34,9 @@ fields:
 | `type` | logical type (see below) |
 | `primaryKey` | marks the PK; must be an integer type |
 | `generated` | auto-increment (integer PKs only) |
-| `required` | NOT NULL; the generated required-value validation keys on this |
+| `required` | NOT NULL; the generated required-value validation keys on this. A field that also carries a default (`defaultValue`, or `init` on a relation) is NOT demanded from the caller - the default satisfies it |
 | `length` | column length for string types |
+| `pattern` | an input-format regular expression the value must match (string / text fields only) |
 | `defaultValue` | column default |
 | `unique` | a UNIQUE constraint (e.g. a code or business key) |
 | `precision` / `scale` | override the decimal default (16, 2) |
@@ -157,6 +158,8 @@ Optional, and authoritative when set; inferred from structure otherwise.
 
 Entity roles: `Document`, `DocumentItem`, `Master`, `Detail`, `List`, `Setting`, `Calendar`, `Attachment`, `Snapshot`. Field role: `DocumentTitle`. Relation role: `EntityStatus` (a managed status badge). `Board`, `Gantt` and `Timeline` are reserved and rejected until those presentations are supported.
 
+**A `DocumentTitle` is not necessarily platform-assigned.** Paired with [`number`](/spec/entities#document-numbering) the platform assigns the value and presents the field read-only. WITHOUT a `number` the title is authored by the user — the counterparty's own reference on an incoming document, for instance — and the create page must offer it as an editable control like any other field. Treating every title as assigned leaves a required field with no way to fill it, and the record cannot be created at all.
+
 ## Attachments and snapshots
 
 Two `function` roles attach **files** to a record. Both are composition children of the record they belong to.
@@ -205,6 +208,46 @@ Row-level and document-level validations, enforced on write / on a status transi
 ```
 
 `exactlyOne` runs on every user write; `itemsMin` / `itemsSumEqual` are gated on a status transition, so drafting stays unconstrained and a failing transition aborts with the message.
+
+### kind: guard — a precondition over an aggregate
+
+A guard compares a keyed [aggregate](/spec/glue#aggregates-keyed-cross-entity-totals) against a minimum and decides what a violating write does:
+
+```yaml
+- name: StockMovement
+  checks:
+    - kind: guard
+      aggregate: onHand                 # an `aggregates` entry whose `of` is THIS entity
+      minimum: 0                        # recomputed total (prior rows + this row) must stay >= minimum
+      message: "Insufficient stock"
+      enabledBy: BLOCK_NEGATIVE_STOCK   # optional: enforced only while this configuration key is "true"
+- name: SalesOrder
+  checks:
+    - kind: guard
+      aggregate: openExposure
+      minimum: 0
+      outcome: task                     # accept the write, mark it for a human step
+      marker: withinCredit
+- name: LeaveRequest
+  checks:
+    - kind: guard
+      aggregate: remaining
+      minimum: 0
+      outcome: reject                   # accept the write, file it already rejected
+      setStatus: 4
+```
+
+| `outcome` | Companion attribute | A violating write |
+| --- | --- | --- |
+| `block` (default) | - | is rejected with `message`; nothing is stored |
+| `task` | `marker:` a boolean field | is stored; `marker` is set `false` (and `true` whenever the guard holds) |
+| `reject` | `setStatus:` a status seed id | is stored; the record's status relation is set to that value |
+
+One outcome would have fitted exactly one real rule. Negative stock wants the write refused; a credit-limit breach wants the order accepted and parked for a human; an over-allowance leave request wants to be filed already rejected.
+
+The total is recomputed from the guarded entity's own rows for the incoming record's key-tuple - excluding the record being updated - rather than read from the materialised aggregate, so the decision cannot race the aggregate's maintenance. The guarded entity must be the aggregate's own source.
+
+`outcome: task` stamps a flag; it does not create or route to a task. A workflow [decision](/spec/processes#decision-steps) reads the marker and routes the record - the two constructs compose, and the guard is the part that computes.
 
 ## immutableWhen / immutable — user-write immutability
 
