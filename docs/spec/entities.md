@@ -34,8 +34,9 @@ fields:
 | `type` | logical type (see below) |
 | `primaryKey` | marks the PK; must be an integer type |
 | `generated` | auto-increment (integer PKs only) |
-| `required` | NOT NULL; the generated required-value validation keys on this |
+| `required` | NOT NULL; the generated required-value validation keys on this. A field that also carries a default (`defaultValue`, or `init` on a relation) is NOT demanded from the caller - the default satisfies it |
 | `length` | column length for string types |
+| `pattern` | an input-format regular expression the value must match (string / text fields only) |
 | `defaultValue` | column default |
 | `unique` | a UNIQUE constraint (e.g. a code or business key) |
 | `precision` / `scale` | override the decimal default (16, 2) |

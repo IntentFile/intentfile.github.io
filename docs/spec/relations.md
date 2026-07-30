@@ -52,6 +52,16 @@ Composition is **opt-in** — most required FKs are plain associations, and comp
       default: retailPrice
 ```
 
+- **Header-mediated source** (field on a document item): `relation` may be a two-segment path `<Parent>.<Relation>` — the first segment is the item's composition parent, the second a to-one relation of that parent. The value is copied from the record the OPEN DOCUMENT HEADER points at, so a line defaults from the document's counterparty rather than from a relation of its own:
+
+```yaml
+- name: discount
+  type: decimal
+  dependsOn: { relation: SalesOrder.Customer, valueFrom: standardDiscount }
+```
+
+  Fields only, and `valueFrom` is required (there is no option list to `filterBy`). The copy happens when a NEW line is opened; an existing line is never re-copied, so a later change to the header leaves already-entered lines untouched.
+
 - **`where`** filters the dropdown to options matching a static condition.
 
 ## Many-to-many

@@ -11,6 +11,8 @@ The quick lookup surface: one line and a minimal snippet per construct. For rule
 | --- | --- |
 | [`entities`](/spec/entities) | tables + CRUD UI + a generated data layer & API |
 | [field / relation attributes](/spec/entities#fields) | uniqueness, layout, read-only, dropdown filtering, cascades |
+| [`pattern`](/spec/entities#fields) | an input-format regular expression enforced in the UI and server-side |
+| [`dependsOn`](/spec/relations) | link a dropdown to another, copy a value from the referenced record, or default a line from the open document header |
 | [`function`](/spec/entities#function-the-presentation-role) | an explicit presentation role (Document, Setting, ...) |
 | [`label`](/spec/entities#label-a-stored-display-name) | a stored, read-only display name for lookups |
 | [`number`](/spec/entities#document-numbering) | a platform-numbered, gap-free document field |
