@@ -74,7 +74,7 @@ entities:
 - { name: code,    type: string, unique: true, length: 30 }
 - { name: total,   type: decimal, precision: 18, scale: 2, readOnly: true }
 - { name: period,  type: month }
-- { name: Number,  type: string, number: { series: SalesInvoice, format: "SI-{seq:06}" } }
+- { name: Number,  type: string, number: { series: Sales Invoice, per: Company, stampOn: create } }
 - { name: Status,  kind: manyToOne, to: OrderStatus, function: EntityStatus, init: 1 }
 - { name: City,    kind: manyToOne, to: City, dependsOn: { relation: Country, filterBy: Country } }
 - { name: Product, kind: manyToOne, to: Product, where: { Type: 1 } }

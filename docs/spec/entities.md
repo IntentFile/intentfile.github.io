@@ -111,28 +111,40 @@ The implementation lives in the project's **custom** (escape-hatch) folder, neve
 
 ## Document numbering
 
-`number:` turns a string field into a platform-numbered document field. The platform owns a **gap-free sequence per series**, renders it through a `format`, and stamps the field automatically - no hand-written number generator.
+`number:` turns a string field into a platform-numbered document field. The platform owns a **gap-free sequence per series** and stamps the field automatically - no hand-written number generator. The intent declares only a **reference to a series** - never how the number looks.
 
 ```yaml
 # stamped on create (the number exists the moment the record is saved):
-- { name: Number, type: string, number: { series: Proforma, format: "PF{seq:08}", stampOn: create } }
+- { name: Number, type: string, number: { series: Proforma, stampOn: create } }
 
-# stamped at a modeled issue step (a placeholder holds the field until then):
+# partitioned per company, stamped at a modeled issue step:
 - name: Number
   type: string
   number:
-    series: SalesInvoice          # documents sharing a sequence pass the same series
-    format: "SI-{year}-{seq:05}"  # {seq} / {seq:0N} / {series} / scope tokens {year}, {<Field>}
-    scope: [year]                 # partitions the counter; omit for one continuous sequence
-    stampOn: issue                # create | issue
+    series: Sales Invoice   # documents sharing one legal range pass the same series
+    per: Company            # optional: a to-one relation whose value partitions the sequence
+    stampOn: issue          # create | issue
 ```
 
-- **`series`** (default: the entity name) — the sequence identity. Give several document types the **same series** to share one running number.
-- **`format`** (default `{series}-{seq:06}`) — `{seq}`, `{seq:0N}` (zero-padded), `{series}`, and scope tokens `{year}` / `{<Field>}`.
-- **`scope`** — `year` and/or sibling field names; partitions the counter and supplies the format's scope tokens.
+- **`series`** (mandatory) — the sequence identity. Give several document types the **same series** to share one running number (a sales invoice, a credit note and a debit note drawing from one legal range).
+- **`per`** (optional) — a to-one relation of the entity whose value **partitions** the series: each partition value owns its sequence, prefix and width. The canonical use is `per: Company` — two legal entities in one deployment each owe their own sequential range and must never share a counter. Identical numbers across partitions are correct (a number must be unique within a company's book, not across companies). The partition selects which sequence to draw from; its value never appears in the number. A status relation cannot partition a series.
 - **`stampOn`** — `create` stamps the real number on insert; `issue` puts a placeholder on the field at create and stamps the real number when the process reaches the wired step. Stamping is **idempotent** - re-issuing after an amend keeps the same number.
 
-The field is read-only in the UI. Counters are visible and adjustable in the generated application's document-numbering settings.
+### The series is configuration, not model
+
+A number series is a **deployment-level business object**, not a module asset. A number renders as **a literal prefix plus the sequence zero-padded to a total width** (`SI00000042`) — there is no token grammar. Neither the prefix nor the width is authored in the intent: baking a format into the model would force a market that numbers documents differently to fork and regenerate the application.
+
+Instead, a module ships a **series declaration** — a requirement, exactly as it declares the roles it needs: "I need series X; if this deployment has none yet, provision it with this default prefix and width" (in the reference implementation a `.numbers` file at the project root):
+
+```json
+{"series": [{"name": "Sales Invoice", "prefix": "SI", "size": 10}]}
+```
+
+Declaring never overwrites: an existing series keeps its live counter and whatever shape its administrators configured. Two modules may declare the same series only **identically** (a shared range provisions once); a differing re-declaration is an error naming both declarations. Removing a module never removes a series or its counter — allocated ranges are business history.
+
+Sequences are **continuous and never auto-reset**. A jurisdiction that restarts numbering each year does it by an administrator setting the prefix and the next value (e.g. prefix `2027-`, next `1`, in January) — visible and auditable, rather than a hidden reset rule that could mint the same number twice. Allocating from a series no declaration provisioned is an error — a document must never carry a number in a shape nobody chose.
+
+The field is read-only in the UI. Each series' prefix, total width and next value are visible and adjustable per deployment in the generated application's document-numbering settings.
 
 ## label — a stored display name
 
