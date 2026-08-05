@@ -158,6 +158,5 @@ The following are parsed (or reserved) but not yet materialised by a generator; 
 
 - Reserved `function` values for upcoming presentations (`Board`, `Gantt`, `Timeline`).
 - **`manyToMany`** — parsed but never materialised; the supported shape is the [explicit intermediate entity](/spec/relations#many-to-many).
-- **Cross-model schedule source** — a schedule's `entity` must be local (the generate target may be cross-model).
 - Event-driven document generation (produce a document on an event), a declarative state machine, and shadow audit-history entities (audit *columns* via `audit: true` ship today).
 - Arbitrary resolver-path task assignment beyond `assignee: personal`.

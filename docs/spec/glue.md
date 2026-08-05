@@ -109,7 +109,7 @@ Cron reminders / cleanups — query an entity and act per matching row. Exactly 
 schedules:
   - name: staleOrders
     cron: "0 0 9 * * ?"
-    entity: Order                                           # the schedule's SOURCE must be local
+    entity: Order                                           # SOURCE - local by default (see model: below)
     where:
       - { field: orderDate, op: lt, value: CURRENT_DATE }   # eq / ne / gt / ge / lt / le / like
     notify:
@@ -138,6 +138,38 @@ schedules:
           forEach: { days: workingDays }   # one child per working day
           dayField: day
 ```
+
+### Cross-model source (`model:`)
+
+The source `entity` is local by default. Add `model: <uses alias>` to read it from another (owner) model, so a schedule can live with the module that owns the CREATED rows instead of being forced into the source's module. The source is **read-only** (a schedule never writes it); a `forEach` collection may likewise be cross-model with its own `model:` alias. Both aliases must be declared under `uses:`.
+
+```yaml
+uses:
+  - { model: projects }
+
+schedules:
+  - name: monthlyProjectTimesheets
+    cron: "0 0 2 1 * ?"
+    entity: Project
+    model: projects                    # the source Project lives in the projects model
+    where:
+      - { field: Status, op: eq, value: 2 }
+    generate:
+      to: ProjectTimesheet             # LOCAL - owned by this model
+      map: { Project: id, Customer: Customer }
+      defaults: { Period: now }
+      children:
+        - to: EmployeeTimesheet
+          parent: ProjectTimesheet
+          forEach:
+            entity: EmployeeProjectAssignment
+            model: projects            # the forEach collection is also cross-model
+            match: { Project: id }
+          map: { Employee: Employee }
+```
+
+- A cross-model source supports the **`generate`** action only. `notify` needs the source's relation metadata, which only a local entity carries, and is rejected.
+- Validation splits the same way relations do: that `model:` names a declared `uses:` alias is checked when the intent is parsed; the source entity's existence and every `where` / `map` / `match` field reference are checked when the model is generated, against the owner model. An unresolvable owner or a mistyped field drops that schedule with a warning — never generated code that cannot compile.
 
 ## integrations — outbound HTTP
 
