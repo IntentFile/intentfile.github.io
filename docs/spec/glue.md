@@ -310,6 +310,17 @@ postings:
       - { Account: rule(receivableAccount), credit: "Amount" }
 ```
 
+### Conditional rule column
+
+When the account column must be chosen by a **source value** — a payment posts to the bank account for a transfer, the cash account for cash — a single item row selects the rule column by a classifier instead of duplicating the row per case (the same `by` / `cases` / `default` shape a conditional value-copy uses). Quote it, since it carries colons and braces:
+
+```yaml
+    items:
+      - { Account: "rule(by: Method, cases: { 1: BankAccount, 2: CashAccount }, default: SuspenseAccount)", debit: "Amount" }
+```
+
+`by` is a source field or to-one relation, compared as a number (like a `when` guard); `cases` keys are the classifier's ids and values are columns of the rule entity; `default` (optional) is the fallback column. When no case matches and there is no default — or the selected column is null — the posting skips to the unposted worklist, exactly as a null `rule(<column>)` does. A conditional cell already branches the account, so it cannot also carry a row `when`.
+
 A second posting can **reverse** the first (a reversal / credit) when the source is voided — pair it with the `transitions` void that flips the source into its void status. The reversal inherits `creates` / `backReference` / `rule` / `map` / `items` from the sibling it names, negates every item amount on the **same** side, links back to the original through a `storno` self-relation, and is fail-soft:
 
 ```yaml
