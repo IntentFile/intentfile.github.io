@@ -21,7 +21,7 @@ processes:
 
 Generates one process definition per `processes[]` entry (a standard workflow model plus its diagram layout, so a modeller renders it).
 
-Step kinds: `userTask`, `serviceTask`, `decision`, `script`, `wait`, `end`.
+Step kinds: `userTask`, `serviceTask`, `decision`, `script`, `wait`, `parallel`, `end`.
 
 ### Step routing — the linear chain and `next:`
 
@@ -38,6 +38,19 @@ A `notify` service task stands alone: it cannot carry another action (`setField`
 `if` + `then` are mandatory, `else` optional. `then` / `else` must name a declared step or the literal `end`; the parser validates this, so a typo fails at parse time rather than producing an invalid workflow. Without `else`, the gateway default falls through to the next step.
 
 A decision condition may walk **one hop** off the trigger entity (`customer.creditLimit > 10000`): a resolver step is generated before the gateway to load the related entity and rewrite the condition.
+
+### parallel — concurrent branches (fork/join)
+
+A `parallel` step runs several branch steps **at the same time** and rejoins before the next step — two independent reviews of one order, say, instead of one after the other. It declares the `branches` to run concurrently and the `next` step to continue at once every branch is done:
+
+```yaml
+  - { name: reviews, kind: parallel, args: { branches: [techReview, commercialReview], next: consolidate } }
+  - { name: techReview,       kind: userTask, args: { assignee: engineer, form: ReviewOrder } }
+  - { name: commercialReview, kind: userTask, args: { assignee: sales,    form: ReviewOrder } }
+  - { name: consolidate,      kind: serviceTask, args: { setRelationField: Status, value: 2, next: done } }
+```
+
+It is a **parallel-gateway fork/join**: a diverging gateway fans an unconditioned flow to each branch, and a converging gateway waits for **all** branches before continuing. The branch steps are off the linear chain (like decision targets). At least two `branches`; each is a single declared task step (`userTask` / `serviceTask` / `script`) that joins directly; `next` is a declared step or `end`. A branch that chains onward (its own `next`/`then`/boundary timer) and a branch that is itself `parallel` (nesting) are not part of this level of the specification.
 
 ### wait — park the process on a data event
 
