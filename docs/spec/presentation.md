@@ -109,7 +109,7 @@ widgets:
 
 ## view — calendar, range, slots
 
-`view:` (with a `calendar:` / `slots:` descriptor) renders an entity as a time-based page instead of a table:
+`view:` (with a `calendar:` / `slots:` descriptor) places an entity's records on a time surface:
 
 ```yaml
 - name: DayAllocation
@@ -124,6 +124,38 @@ widgets:
 ```
 
 `view: calendar` is also expressible as the role alias `function: Calendar`.
+
+### A calendar is an additional page
+
+`view: calendar` and `view: range` **add** a page; they never take one away. The entity keeps the page family its structure already implies — a list, a master-detail, or a document editor — and the calendar joins it:
+
+| Route | Page |
+|---|---|
+| `/<Entity>` | the calendar |
+| `/<Entity>/list` | the entity's own browse page (list / master / document list) |
+| `/<Entity>/create`, `/<Entity>/<id>/edit` | the entity's own editor |
+
+Both browse pages offer a switch to the other, and clicking a day or an event on the calendar opens the entity's own editor. So a document master may be browsed on a calendar and still be edited as a document, with its line items, printing and workflow tasks intact.
+
+`view: slots` is the exception: a slot picker is an authoring surface — pick a free slot, create a record — rather than a second way to browse the same records, so it does replace the browse page.
+
+### A document's line items on a calendar
+
+When the entity declaring `view: calendar` is a document's **line-items** child, the document's items pane *is* the calendar instead of the row grid — the shape for a day-grained line, such as a booked day or an allocated hour:
+
+```yaml
+- name: Roster
+  function: Document
+- name: RosterItem
+  function: DocumentItem
+  view: calendar
+  calendar: { start: day, title: Person }
+  fields:
+    - { name: day,   type: date, required: true }
+    - { name: hours, type: decimal, precision: 18, scale: 2 }
+```
+
+The document keeps its header, totals and printing; only the items pane changes. Clicking an event edits that line, clicking an empty day adds one with that date filled in. It cannot be combined with `documentItemsLayout: chat`, which claims the same pane.
 
 ## documentItemsLayout: chat — conversation threads
 
