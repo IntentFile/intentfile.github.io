@@ -50,7 +50,25 @@ A `parallel` step runs several branch steps **at the same time** and rejoins bef
   - { name: consolidate,      kind: serviceTask, args: { setRelationField: Status, value: 2, next: done } }
 ```
 
-It is a **parallel-gateway fork/join**: a diverging gateway fans an unconditioned flow to each branch, and a converging gateway waits for **all** branches before continuing. The branch steps are off the linear chain (like decision targets). At least two `branches`; each is a single declared task step (`userTask` / `serviceTask` / `script`) that joins directly; `next` is a declared step or `end`. A branch that chains onward (its own `next`/`then`/boundary timer) and a branch that is itself `parallel` (nesting) are not part of this level of the specification.
+It is a **parallel-gateway fork/join**: a diverging gateway fans an unconditioned flow to each branch, and a converging gateway waits for **all** branches before continuing.
+
+A branch is a **chain**, not a single step. It starts at the declared branch step and continues through that step's own routing — its `next`, a decision's `then` / `else`, a boundary `timeout` / `expire` branch — and it may itself be a nested `parallel`, which contributes its own fork/join pair. Everything reachable that way belongs to the branch and runs concurrently with the sibling branches:
+
+```yaml
+  - { name: reviews, kind: parallel, args: { branches: [techReview, commercial], next: consolidate } }
+  # a two-step chain: the second step declares no routing, so it joins
+  - { name: techReview,  kind: userTask,    args: { assignee: engineer, form: ReviewOrder, next: techSignoff } }
+  - { name: techSignoff, kind: serviceTask, args: { setRelationField: TechStatus, value: 2 } }
+  # a nested fork: it declares no `next`, so its join flows into the enclosing one
+  - { name: commercial,  kind: parallel,    args: { branches: [pricing, legal] } }
+  - { name: pricing,     kind: decision,    args: { if: "amount > 1000", then: escalate, else: join } }
+  - { name: escalate,    kind: userTask,    args: { assignee: manager, form: ReviewOrder } }
+  - { name: legal,       kind: userTask,    args: { assignee: legal,   form: ReviewOrder } }
+```
+
+A branch and everything it reaches are off the linear chain (like decision targets), so their declaration order carries no meaning — and inside a branch there is **no positional fall-through**. A step routes explicitly, or, declaring no routing at all, is a branch **terminal** and flows into the join. The routing literal **`join`** converges on the innermost enclosing join gateway, which is how a decision inside a branch rejoins from both arms.
+
+Rules: at least two distinct `branches`, each a declared step other than the fork itself. `join` is valid only inside a branch, and no step may be named `join`. A branch must never route to `end` — the join would wait forever for a token that ended; end the process after the fork instead. A step may belong to only one branch: a step two concurrent tokens reach runs twice and still leaves the join waiting. A branch is entered through its fork only, so a branch converges on `join`, never on the fork's own `next` directly. A top-level fork declares `next` (a declared step or `end`); a **nested** fork may omit it, and then joins into its own enclosing join.
 
 ### wait — park the process on a data event
 
