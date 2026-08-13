@@ -129,7 +129,7 @@ The abstract model is **one altitude above** the models a platform already gener
 
 6. **Structured intent, not free text.** Natural language is the *input*; the artefact is structured. The transform below it is a pure function, not a second act of interpretation.
 
-7. **Honour the escape hatch.** Real applications always have one weird requirement no model expresses. The discipline provides a first-class place for hand-written code that survives regeneration — declared as hook points, implemented alongside the generated output, never overwritten. When something cannot be expressed, *extend the abstract model* (and teach a generator to consume it); never leak hand-edits into generated folders.
+7. **Honour the escape hatch.** Real applications always have one weird requirement no model expresses. The discipline provides a first-class place for hand-written code that survives regeneration — declared as hook points, implemented alongside the generated output, never overwritten. When something cannot be expressed, *extend the abstract model* (and teach a generator to consume it); never leak hand-edits into generated folders. What deliberately lives outside the model — and why that line is a feature — is [the scope boundary](/boundary).
 
 8. **Visualisation is read-only.** Diagrams render the abstract model for a fast human read. Authoring is the prompt plus the structured editor; the graphical view confirms, it does not capture.
 

@@ -132,6 +132,7 @@ export default defineConfig({
             { text: 'DSL reference', link: '/reference' },
             { text: 'Examples', link: '/examples' },
             { text: 'Manifesto', link: '/manifesto' },
+            { text: 'The scope boundary', link: '/boundary' },
           ],
         },
       ],
