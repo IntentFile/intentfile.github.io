@@ -19,6 +19,7 @@ The quick lookup surface: one line and a minimal snippet per construct. For rule
 | [`checks`](/spec/entities#checks-declarative-validations) | cross-field / cross-line validations |
 | [`checks: kind: guard`](/spec/entities#kind-guard-a-precondition-over-an-aggregate) | a precondition over an aggregate: block, mark for a task, or reject |
 | [`immutableWhen` / `immutable`](/spec/entities#immutablewhen-immutable-user-write-immutability) | reject user writes in a status / append-only |
+| [`locksWithMaster`](/spec/entities#lockswithmaster-a-child-collection-that-outlives-its-masters-lock) | a child collection that stays writable while its master is locked |
 | [`hierarchy` / `leafOnly`](/spec/entities#hierarchy-leafonly-tree-entities) | tree entities, leaf-only references |
 | [calculated fields](/spec/entities#calculated-fields) | server + UI-evaluated expressions, date helpers, call-outs |
 | [`relations` / `composition`](/spec/relations#relations) | associations and master-detail compositions |
