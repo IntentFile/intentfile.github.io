@@ -45,6 +45,7 @@ The quick lookup surface: one line and a minimal snippet per construct. For rule
 | [`settlements`](/spec/glue#settlements-payment-allocation) | auto-allocation of payments across open invoices |
 | [`expansions`](/spec/glue#expansions-child-rows-from-a-date-span) | generated child rows per day / week / month |
 | [`generates`](/spec/glue#generates-create-from) | one-click document-from-document cloning |
+| [`generates.event`](/spec/glue#event-driven-creation-event) | mint the document on a source event instead of a click, at most once |
 | [`transitions`](/spec/glue#transitions-guarded-status-flips) | guarded on-demand status flips (void / cancel / reopen) |
 | [`postings`](/spec/glue#postings-source-document-to-ledger) | declarative source-document to balanced-document posting - on a status transition, or on create for a lifecycle-less source |
 | [`aggregates`](/spec/glue#aggregates-keyed-cross-entity-totals) | keyed cross-entity totals materialised into their own entity |
@@ -137,6 +138,12 @@ reports:
 ```yaml
 generates:
   - { name: invoice-from-order, from: Order, to: Invoice, map: { Customer: Customer }, sourceStatus: 3 }
+  # ...or minted with no click at all, at most once per source:
+  - name: delivery-from-order
+    from: Order
+    to: Delivery
+    event: { onTransition: Order, when: "Status == CONFIRMED" }
+    map: { Order: id }
 
 transitions:
   - { name: VoidInvoice, forEntity: Invoice, from: [ISSUED, SENT], setStatus: VOIDED, when: "Paid == 0", label: Void, icon: ban }
@@ -163,5 +170,5 @@ The following are parsed (or reserved) but not yet materialised by a generator; 
 - Reserved `function` values for upcoming presentations (`Board`, `Gantt`, `Timeline`).
 - **Cross-model status names and stage scopes** — a nomenclature owned by another model is seeded there, so its stages and names cannot be resolved from the referencing file; such references are rejected with the numeric-id fallback named.
 - **`manyToMany`** — parsed but never materialised; the supported shape is the [explicit intermediate entity](/spec/relations#many-to-many).
-- Event-driven document generation (produce a document on an event), a declarative state machine, and shadow audit-history entities (audit *columns* via `audit: true` ship today).
+- A declarative state machine, and shadow audit-history entities (audit *columns* via `audit: true` ship today).
 - Arbitrary resolver-path task assignment beyond `assignee: personal`.

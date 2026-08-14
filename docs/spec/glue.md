@@ -291,6 +291,40 @@ generates:
 
 Adds a button on the source view; the clone saves through the target's own layer, so numbering, status init and calculated fields fire. An optional `sourceStatus` flips the source record's status once the target exists.
 
+### Event-driven creation — `event:`
+
+A create-from may declare an `event:` instead of relying on the button — the follow-up document is minted the moment the source reaches a state, with nobody clicking. The canonical case is a document that arrives from the outside and is completed by an earlier step: a fine ingested by a webhook, whose responsible person is identified by a transition, must produce a declaration document from the fine and that person.
+
+```yaml
+generates:
+  - name: declaration-from-fine
+    from: Fine
+    to: Declaration
+    event: { onTransition: Fine, when: "Status == IDENTIFIED" }   # or { onCreate: Fine }
+    map:
+      Fine: id                       # REQUIRED with an event — the back-reference, i.e. the guard
+      Vehicle: Vehicle
+    defaults: { declaredAt: now }
+    items:                           # a whole document — header AND items
+      - { name: "Fine {number}", amount: Amount }
+```
+
+::: info Normative
+Exactly one trigger must be declared: `onTransition` (a status write — a `when: "<StatusRelation> == <status>"` guard is mandatory, the status named or numbered) or `onCreate` (the source's insert — the guard is optional, for a source with no status lifecycle). The entity named there must be the entity `from:` declares; the owning model is never repeated (`fromUses:` declares it). The guard must be evaluated against the source as re-read at delivery, not against the event payload, which is as-of the event and lacks anything a later step wrote.
+:::
+
+::: info Normative
+An event-driven create-from is **at-most-once**: `map` must copy the source's primary key onto a to-one relation of the target back to the source, and the generated creation must return the already existing target instead of creating a second one. A file declaring an `event` without that back-reference must be rejected — a redelivery would otherwise mint a duplicate document. A create-from with no `event` carries no such guard: producing several targets from one source by clicking twice is a legitimate manual act.
+:::
+
+::: info Normative
+Declaring an `event` drops the button unless `button: true` is declared as well; `button: false` without an `event` must be rejected (the action would have no trigger at all). When both triggers are declared they must share one creation path, and therefore one at-most-once guard.
+:::
+
+`sourceStatus:` composes unchanged: the flip happens once the target exists, and cannot re-trigger the create-from because the guard has already claimed the source.
+
+Prefer this over [`posts`](#posts-derived-rows-on-an-event) when the result is a document with line items — `posts` emits flat mapped rows and cannot reference the freshly created header. Prefer it over a button plus a [`wait`](/spec/processes#wait-park-the-process-on-a-data-event) step when the step is really waiting for a person to remember to click: an unclicked record parks its process instance indefinitely.
+
 ## transitions — guarded status flips
 
 A per-record button that flips an entity's `function: EntityStatus` relation on demand — void, cancel, close, reopen — guarded by allowed source statuses and an optional condition. A flip from any other status (or a failing guard) is rejected; a successful flip publishes a `-transitioned` event that `postings` and integrations can observe.
