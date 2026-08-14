@@ -311,6 +311,29 @@ The lock also covers the entity's **composition children**. A child declares no 
 ::: info Normative
 A generator MUST refuse a user create, update or delete of a composition child whose master is currently immutable, unless that child declares `locksWithMaster: false`. The refusal MUST cover every user surface it generates, not only the affordances it renders — permitting the write through a different door undoes the lock as surely as removing it. It MUST NOT extend to system / workflow writes, which are what corrects an immutable record.
 :::
+## lifecycle — the legal status graph
+
+Everything else about statuses is stated one edge at a time: `init:` says where a record starts, a [`transitions`](/spec/glue#transitions-guarded-status-flips) button guards the flips a user performs *through that button*, a workflow step sets a status, a [check](#checks-declarative-validations) files a rejected record in another. Nowhere does the file say which moves are legal *at all* — so any writer that is not a transition button (a workflow branch, a glue action, an API call) can move a document from any status to any other, and nothing notices.
+
+`lifecycle:` states the whole graph, once:
+
+```yaml
+- name: SalesInvoice
+  lifecycle:
+    edges:
+      - { from: DRAFT,  to: [ISSUED, CANCELLED] }
+      - { from: ISSUED, to: [PAID, VOIDED] }
+```
+
+- One entry per **source** status, listing every status reachable from it. Both sides accept a [seeded status name or its id](/spec/data#status-references-name-not-number).
+- The graph is always over the entity's `function: EntityStatus` relation, so it names no column; the nomenclature must be seeded in the same file (a status entity owned by another model is seeded there, and so is its lifecycle).
+- A status not listed as any `from` is **terminal**; a status listed nowhere is simply unreachable through this entity.
+
+> **Normative.** A conforming generator MUST validate every status write against the graph — user, workflow, glue, transition button alike — and reject a move no edge declares, with a message naming both statuses. Enforcement therefore belongs to the layer every writer passes through (the generated persistence layer), never to the transition endpoints alone, which would leave every other writer unguarded. Where the status relation declares `init:`, a record MUST also be *created* in that status: entering the lifecycle anywhere else skips the graph rather than travelling it.
+
+> **Normative.** With a lifecycle declared, `transitions` become **presentation over its edges**: each `from` status of a transition MUST reach its `setStatus` along a declared edge, and a status written by a workflow step or forced by a check's rejection MUST be one that some edge reaches. A conforming generator reports the disagreement when the file is read, not when the button is pressed — a reject path transiting through an approved status is exactly the mistake the graph exists to catch.
+
+It composes with the [`stage:` classification](/spec/data#stage-what-a-status-means-to-the-lifecycle): a stage says what a status *means* (draft, live, cancelled, void) and scopes reports by it; the lifecycle says how a record may *move* between statuses.
 
 ## locksWithMaster — a child collection that outlives its master's lock
 
