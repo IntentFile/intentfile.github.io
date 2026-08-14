@@ -31,6 +31,7 @@ The quick lookup surface: one line and a minimal snippet per construct. For rule
 | [`view`](/spec/presentation#view-calendar-range-slots) | calendar / range / slot-booking pages |
 | [`documentItemsLayout: chat`](/spec/presentation#documentitemslayout-chat-conversation-threads) | render a document's items as a chat thread |
 | [`reports`](/spec/presentation#reports) | aggregations, charts, dashboard KPI tiles, balance reports |
+| [`scope`](/spec/presentation#lifecycle-scope) | which lifecycle rows an aggregating report counts |
 | [`widgets`](/spec/presentation#widgets-custom-dashboard-tiles) | custom KPI / embedded-page dashboard tiles |
 | [`notifications`](/spec/glue#notifications) | email on create / update / delete |
 | [`notify.forEach`](/spec/glue#one-message-per-related-row-foreach) | fan the block out over a related collection: one message per row |
@@ -124,6 +125,7 @@ reports:
     dimensions: ["month(orderDate)"]
     measures: ["count(*)", "sum(total)"]
     filter: "total > 0"
+    scope: live                    # all | draft | live | cancelled | void
     chart: bar
     widget: { value: "sum(total)", at: { "month(orderDate)": now }, label: Revenue (this month) }
 ```
@@ -135,7 +137,7 @@ generates:
   - { name: invoice-from-order, from: Order, to: Invoice, map: { Customer: Customer }, sourceStatus: 3 }
 
 transitions:
-  - { name: VoidInvoice, forEntity: Invoice, from: [3, 4], setStatus: 8, when: "Paid == 0", label: Void, icon: ban }
+  - { name: VoidInvoice, forEntity: Invoice, from: [ISSUED, SENT], setStatus: VOIDED, when: "Paid == 0", label: Void, icon: ban }
 ```
 
 ### seeds
@@ -145,8 +147,8 @@ seeds:
   - name: statuses
     entity: OrderStatus
     rows:
-      - { id: 1, name: DRAFT }
-      - { id: 2, name: POSTED }
+      - { id: 1, name: DRAFT, stage: draft }
+      - { id: 2, name: POSTED, stage: live }
   - name: countries
     entity: Country
     file: data/countries.csv
@@ -157,6 +159,7 @@ seeds:
 The following are parsed (or reserved) but not yet materialised by a generator; a conforming tool rejects or ignores them with a clear message rather than failing obscurely:
 
 - Reserved `function` values for upcoming presentations (`Board`, `Gantt`, `Timeline`).
+- **Cross-model status names and stage scopes** — a nomenclature owned by another model is seeded there, so its stages and names cannot be resolved from the referencing file; such references are rejected with the numeric-id fallback named.
 - **`manyToMany`** — parsed but never materialised; the supported shape is the [explicit intermediate entity](/spec/relations#many-to-many).
 - Event-driven document generation (produce a document on an event), a declarative state machine, and shadow audit-history entities (audit *columns* via `audit: true` ship today).
 - Arbitrary resolver-path task assignment beyond `assignee: personal`.

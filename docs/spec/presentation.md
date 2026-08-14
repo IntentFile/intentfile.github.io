@@ -31,6 +31,38 @@ Generates one report per `reports[]` entry, rooted at `source`, with a fully mat
 
 `filter` becomes the `WHERE`, with field names rewritten to qualified physical columns. Report names, descriptions and column labels are emitted into the translation catalogue, so they localise alongside the rest of the UI.
 
+### Lifecycle scope
+
+An aggregation over an entity that carries a lifecycle (`function: EntityStatus`) is **wrong by default**: drafts nobody has issued, cancelled documents and voided ones all land in the sum. `scope` states which lifecycle rows the report counts, in terms of the [stages](/spec/data#stage-what-a-status-means-to-the-lifecycle) the nomenclature declares — not a predicate over positional ids:
+
+```yaml
+reports:
+  - name: RevenueByMonth
+    source: Invoice
+    # no scope: an aggregation over a stage-classified lifecycle counts the live rows
+    dimensions: ["month(date)"]
+    measures: ["sum(total)"]
+
+  - name: InvoicesByStatus
+    source: Invoice
+    scope: all                  # the explicit opt-out: this report is ABOUT the lifecycle
+    dimensions: [Status]
+    measures: ["count(*)"]
+
+  - name: VoidedInvoices
+    source: Invoice
+    scope: void                 # a stage name selects the statuses classified with it
+    measures: ["count(*)", "sum(total)"]
+```
+
+::: info Normative
+`scope` is `all` or a single stage name, and is only meaningful over a source declaring a `function: EntityStatus` relation. A stage scope restricts the query to the statuses that stage classifies; `all` adds no restriction.
+
+With no `scope`, a report counts every row **except** when all of the following hold, in which case it counts the `live` rows: it aggregates (declares measures, or is a balance report); its source's nomenclature is stage-classified; and neither its dimensions nor its `filter` reference the status. The last condition keeps a breakdown **by** status complete and leaves an authored predicate authoritative — a generator MUST NOT combine an implicit scope with either.
+
+A report that aggregates over a lifecycle-carrying source while declaring no `scope`, filtering on no status, and resolving no stage classification is the case this construct exists to eliminate: a generator MUST report it as a diagnostic naming the report and its status relation. Emitting the unrestricted aggregation silently is non-conforming.
+:::
+
 ### Chart
 
 `chart:` renders the report page as a chart instead of a table (the page keeps a table / chart toggle, so filters, export and print still work). A chart wants exactly one dimension and one or more measures — the dimension labels the axis and each measure becomes a series:
