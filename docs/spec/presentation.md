@@ -158,6 +158,29 @@ The template is a tree of layout tags (`page`, `header` / `footer`, `section` / 
 {{<Property>}}                     a line-item field (inside a table bound to the items)
 ```
 
+A `table` (or a row-expanding `for`) can **filter** the collection it renders — a declarative value match, never an expression: `filter="<path>"` keeps the rows whose path (resolved per row) is truthy, and adding `match="A | B"` keeps only the rows whose value equals one of the `|`-separated literals. The same `match` on an `if` compares its resolved `source` against the listed values instead of testing truthiness. One bound collection can this way render into several purpose-grouped tables — the two-column payslip (earnings left, deductions right), a journal entry's debit and credit sides, a VAT summary per rate:
+
+```text
+<row gap="16">
+    <stack>
+        <text style="subtitle">Earnings</text>
+        <table source="items" filter="Kind" match="BASE | ENTRY">
+            <column width="3*" label="Earning">{{Name}}</column>
+            <column width="*" align="right" label="Amount">{{Amount}}</column>
+        </table>
+    </stack>
+    <stack>
+        <text style="subtitle">Deductions</text>
+        <table source="items" filter="Kind" match="CONTRIBUTION | TAX">
+            <column width="3*" label="Deduction">{{Name}}</column>
+            <column width="*" align="right" label="Amount">{{Amount}}</column>
+        </table>
+    </stack>
+</row>
+```
+
+A generator that predates the attributes ignores them and renders all rows — a filtered template never fails on an older platform.
+
 ::: info Normative
 The print template is written **create-if-absent** and never regenerated over. A printed document is a formatted, audited artefact you adapt by hand, and a newly added model field must not silently appear on an already-designed document.
 :::
