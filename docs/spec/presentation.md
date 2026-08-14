@@ -31,6 +31,38 @@ Generates one report per `reports[]` entry, rooted at `source`, with a fully mat
 
 `filter` becomes the `WHERE`, with field names rewritten to qualified physical columns. Report names, descriptions and column labels are emitted into the translation catalogue, so they localise alongside the rest of the UI.
 
+### Lifecycle scope
+
+An aggregation over an entity that carries a lifecycle (`function: EntityStatus`) is **wrong by default**: drafts nobody has issued, cancelled documents and voided ones all land in the sum. `scope` states which lifecycle rows the report counts, in terms of the [stages](/spec/data#stage-what-a-status-means-to-the-lifecycle) the nomenclature declares — not a predicate over positional ids:
+
+```yaml
+reports:
+  - name: RevenueByMonth
+    source: Invoice
+    # no scope: an aggregation over a stage-classified lifecycle counts the live rows
+    dimensions: ["month(date)"]
+    measures: ["sum(total)"]
+
+  - name: InvoicesByStatus
+    source: Invoice
+    scope: all                  # the explicit opt-out: this report is ABOUT the lifecycle
+    dimensions: [Status]
+    measures: ["count(*)"]
+
+  - name: VoidedInvoices
+    source: Invoice
+    scope: void                 # a stage name selects the statuses classified with it
+    measures: ["count(*)", "sum(total)"]
+```
+
+::: info Normative
+`scope` is `all` or a single stage name, and is only meaningful over a source declaring a `function: EntityStatus` relation. A stage scope restricts the query to the statuses that stage classifies; `all` adds no restriction.
+
+With no `scope`, a report counts every row **except** when all of the following hold, in which case it counts the `live` rows: it aggregates (declares measures, or is a balance report); its source's nomenclature is stage-classified; and neither its dimensions nor its `filter` reference the status. The last condition keeps a breakdown **by** status complete and leaves an authored predicate authoritative — a generator MUST NOT combine an implicit scope with either.
+
+A report that aggregates over a lifecycle-carrying source while declaring no `scope`, filtering on no status, and resolving no stage classification is the case this construct exists to eliminate: a generator MUST report it as a diagnostic naming the report and its status relation. Emitting the unrestricted aggregation silently is non-conforming.
+:::
+
 ### Chart
 
 `chart:` renders the report page as a chart instead of a table (the page keeps a table / chart toggle, so filters, export and print still work). A chart wants exactly one dimension and one or more measures — the dimension labels the axis and each measure becomes a series:
@@ -109,7 +141,7 @@ widgets:
 
 ## view — calendar, range, slots
 
-`view:` (with a `calendar:` / `slots:` descriptor) renders an entity as a time-based page instead of a table:
+`view:` (with a `calendar:` / `slots:` descriptor) places an entity's records on a time surface:
 
 ```yaml
 - name: DayAllocation
@@ -124,6 +156,36 @@ widgets:
 ```
 
 `view: calendar` is also expressible as the role alias `function: Calendar`.
+
+### A view adds a page
+
+`view: calendar`, `view: range` and `view: slots` **add** a page; they never take one away. The entity keeps the page family its structure already implies — a list, a master-detail, or a document editor — and the view joins it:
+
+| Route | Page |
+| --- | --- |
+| `/<Entity>` | the calendar, or the slot picker |
+| `/<Entity>/list` | the entity's own browse page (list / master / document list) |
+| `/<Entity>/create`, `/<Entity>/<id>/edit` | the entity's own editor |
+
+Both browse pages offer a switch to the other, and choosing a day, an event or a free slot opens the entity's own editor. So a document master may be browsed on a calendar — or booked from a slot picker — and still be edited as a document, with its line items, printing and workflow tasks intact: declaring a view never costs an entity its editing surface. A picker is how a record is *created*; the list or document page is how it is worked with afterwards, and an author needs both.
+
+### A document's line items on a calendar
+
+When the entity declaring `view: calendar` is a document's **line-items** child, the document's items pane *is* the calendar instead of the row grid — the shape for a day-grained line, such as a booked day or an allocated hour:
+
+```yaml
+- name: Roster
+  function: Document
+- name: RosterItem
+  function: DocumentItem
+  view: calendar
+  calendar: { start: day, title: Person }
+  fields:
+    - { name: day,   type: date, required: true }
+    - { name: hours, type: decimal, precision: 18, scale: 2 }
+```
+
+The document keeps its header, totals and printing; only the items pane changes. Clicking an event edits that line, clicking an empty day adds one with that date filled in. A line-items child cannot be both a calendar and a chat thread (`documentItemsLayout: chat`) — the two claim the same pane, and declaring both is an error.
 
 ## documentItemsLayout: chat — conversation threads
 
@@ -163,6 +225,41 @@ The print template is written **create-if-absent** and never regenerated over. A
 :::
 
 To add a language, add a file under a sibling language folder (`.../Print/bg/standard.print`); the print action asks which to use when several exist.
+
+### Row filtering — `filter` / `match`
+
+One collection often has to render into several purpose-grouped tables: a payslip prints earnings beside deductions from the same fiche lines, a journal entry its debit side next to its credit side, a VAT summary the same items grouped per rate. The line items carry the discriminator (a kind, a side, a rate group); `filter` / `match` let a table select on it:
+
+```text
+<row gap="16">
+    <stack>
+        <text style="subtitle">Earnings</text>
+        <table source="items" filter="Kind" match="BASE | ENTRY">
+            <column width="3*" label="Earning">{{Name}}</column>
+            <column width="*" align="right" label="Amount">{{Amount}}</column>
+        </table>
+    </stack>
+    <stack>
+        <text style="subtitle">Deductions</text>
+        <table source="items" filter="Kind" match="CONTRIBUTION | TAX">
+            <column width="3*" label="Deduction">{{Name}}</column>
+            <column width="*" align="right" label="Amount">{{Amount}}</column>
+        </table>
+    </stack>
+</row>
+
+<if source="status" match="POSTED | SENT">
+    <text>Final document</text>
+</if>
+```
+
+- **`filter="<path>"`** on a `table` (or a row-expanding `for`) names a path resolved **in each row's own scope**. Without `match`, a row is kept when the resolved value is truthy.
+- **`match="A | B"`** lists accepted literal values, `|`-separated, surrounding whitespace trimmed. A row is kept when the resolved value's string form equals one of the literals.
+- **`match` on an `if`** compares the node's resolved `source` against the listed literals instead of testing truthiness.
+
+::: info Normative
+A filtered `table` renders its column definitions unchanged and one row per kept element, in source order; elements failing the filter are skipped entirely. A filtered `for` expands its children only for the kept elements. An unresolved or null filter value never matches a `match` list, and is falsy without one. Comparison is by the value's plain string form (numbers by their canonical rendering, booleans as `true`/`false`) — no coercion beyond that, no operators, no expressions. `filter` absent renders every element; `match` without `filter` on a `table`/`for` has no effect; an empty `match` is treated as absent; `match` on an `if` without a `source` keeps the children hidden. A template using these attributes rendered by an implementation that predates them MUST degrade to rendering all rows — unknown attributes are ignored, never a parse failure.
+:::
 
 ## See also
 

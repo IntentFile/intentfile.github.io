@@ -109,7 +109,7 @@ Cron reminders / cleanups — query an entity and act per matching row. Exactly 
 schedules:
   - name: staleOrders
     cron: "0 0 9 * * ?"
-    entity: Order                                           # the schedule's SOURCE must be local
+    entity: Order                                           # add model: <alias> for a cross-model source
     where:
       - { field: orderDate, op: lt, value: CURRENT_DATE }   # eq / ne / gt / ge / lt / le / like
     notify:
@@ -118,6 +118,8 @@ schedules:
       body: "This order is stale."
       # the full notify block applies here: attach: print for the row's document, forEach to fan out
 ```
+
+The schedule's `entity` may be owned by another model: add `model: <alias>` (an alias declared in [`uses`](/spec/relations#reuse-dont-redefine-uses)) and the schedule queries the owner's entity — its `where` fields, `map` sources and notify paths are validated against the **owner's** model at generation time, exactly like a cross-model relation. The `generate` target and its `children` accept the same `model:` alias.
 
 The `generate` variant creates a record through the **target's** own layer (so numbering, status init and calculated fields fire); the target may be cross-model via a `uses:` alias, and it may fan out `children`:
 
@@ -138,6 +140,8 @@ schedules:
           forEach: { days: workingDays }   # one child per working day
           dayField: day
 ```
+
+`map` copies a value of the queried row; `defaults` sets a constant — `now` means "today", rendered in the **target field's own shape** (a `date` field gets today's date, a `month` field the current `YYYY-MM`, a `week` field the current `YYYY-Www`).
 
 ## integrations — outbound HTTP
 
@@ -254,7 +258,40 @@ generates:
     sourceStatus: 3                   # optional: flip the source's status after the target is created
 ```
 
-Adds a button on the source view; the clone saves through the target's own layer, so numbering, status init and calculated fields fire. An optional `sourceStatus` flips the source record's status once the target exists.
+Adds a button on the source view; the clone saves through the target's own layer, so numbering, status init and calculated fields fire. `map` copies a source value; `defaults` sets a constant — `now` means "today", rendered in the **target field's own shape** (a `date` field gets today's date, a `month` field the current `YYYY-MM`, a `week` field the current `YYYY-Www`). An optional `sourceStatus` flips the source record's status once the target exists.
+
+`items` has two mutually-exclusive shapes. As an **object** (above) it **mirrors** each source child row 1:1. As a **list** it builds **computed** synthetic lines whose cells are expressions over the **source** record — use it when a create-from must produce a computed line (e.g. one invoice line carrying a period's rolled-up total) rather than a 1:1 clone. The target's line-items child is resolved automatically (it is never named):
+
+```yaml
+    items:                                 # computed synthetic lines over the SOURCE record
+      - name: "Services for {period}"      # string: {field} interpolation (or a source-field copy / literal)
+        quantity: 1                        # numeric: an arithmetic expression over the source, rounded to
+        price: BillableAmount              #   the target field's scale (a bare literal is a trivial one)
+        when: "BillableAmount != 0"        # optional guard: <SourceField> ==|!= <number>
+```
+
+A **numeric** cell is an arithmetic expression evaluated the same way as a calculated field or a posting item amount (source identifiers are the field names; a null reads as 0); a **string** cell interpolates `{field}` placeholders, copies a bare source property, or is a plain literal; a **to-one relation** cell copies the source foreign key; a `when` cell guards the whole line. The list form is not available on a scheduled generate.
+
+### Prompted input — `prompt:`
+
+A generates action MAY declare `prompt:` — a small input form shown before the target is created, for the values the source cannot derive. The canonical case is manual payment allocation on an issued invoice: which payment, and how much (an allocation is often partial). It is also the sanctioned way to create a child record on an **immutable** document — the document's panels are read-only by design, while per-record action buttons are not gated on mutability (the same affordance that lets Void work on an issued document).
+
+```yaml
+generates:
+  - name: allocate-payment
+    from: SalesInvoice
+    to: SalesInvoiceCustomerPayment      # a local composition child of the source
+    label: Allocate Payment
+    map:
+      SalesInvoice: id
+      Customer: Customer             # derived values stay mapped — prompt only what cannot be derived
+    prompt:
+      - CustomerPayment                # a to-one relation: rendered as its dropdown
+      - amount                         # a field: rendered as its typed input
+```
+
+- A property MUST NOT be both prompted and mapped/defaulted — every target value has exactly one writer. Prompted values are applied after `map`/`defaults`.
+- Constraints: the target MUST be a local entity (no `uses:`) declaring a composition to-one relation to `forEntity`; the action's scope MUST be `entity`; a `timestamp` field MUST NOT be prompted.
 
 ## transitions — guarded status flips
 

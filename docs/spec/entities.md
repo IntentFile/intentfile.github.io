@@ -37,7 +37,8 @@ fields:
 | `required` | NOT NULL; the generated required-value validation keys on this. A field that also carries a default (`defaultValue`, or `init` on a relation) is NOT demanded from the caller - the default satisfies it |
 | `length` | column length for string types |
 | `pattern` | an input-format regular expression the value must match (string / text fields only) |
-| `defaultValue` | column default |
+| `format` | a **named input-format preset** over `pattern` (today: `email`) — supplies the canonical regex and the matching input control, enforced server-side like an authored `pattern`; mutually exclusive with `pattern` |
+| `defaultValue` | the field's default: the column default, the reason a `required` field is not demanded from the caller, and the value a **new** row is seeded with in the UI (see [Field defaults](#defaultvalue-field-defaults)) |
 | `unique` | a UNIQUE constraint (e.g. a code or business key) |
 | `precision` / `scale` | override the decimal default (16, 2) |
 | `readOnly` | rendered read-only in the UI (e.g. a calculated total) |
@@ -85,6 +86,33 @@ By default the generated UI controls follow declaration order - all fields first
 
 Names match field / relation names (case-insensitive). A partial order is fine - any property not listed keeps its default position and is appended after the listed ones.
 
+## defaultValue — field defaults
+
+`defaultValue` states what a field holds when nobody supplies a value:
+
+```yaml
+fields:
+  - { name: hours,    type: decimal, required: true, defaultValue: 8 }
+  - { name: billable, type: boolean, defaultValue: true }
+```
+
+It has three effects at once, which are deliberately one key rather than three:
+
+- it is the **column default**, so a row inserted without the column gets it;
+- it **satisfies `required`**, so the caller is not asked for a value the model already guarantees;
+- it **seeds a new row in the UI**, so an editor opens on the default instead of on a blank.
+
+::: info Normative
+A generator MUST apply the default when creating a new record and MUST NOT re-apply it to an
+existing one: a value the user cleared is a value the user chose, and re-defaulting it on the next
+edit would silently undo an intentional change.
+The default is a *starting value*, not a constraint — the user may replace it, and nothing
+revalidates a stored row against it.
+On a to-one relation the equivalent key is [`init`](/spec/relations#relation-attributes), which names a seeded record.
+:::
+A default is what makes a bulk affordance one action rather than several: a dialog that creates one
+line per working day is only useful if the line it creates already carries the usual values.
+
 ## Calculated fields
 
 A field value can be derived instead of entered:
@@ -111,28 +139,32 @@ The implementation lives in the project's **custom** (escape-hatch) folder, neve
 
 ## Document numbering
 
-`number:` turns a string field into a platform-numbered document field. The platform owns a **gap-free sequence per series**, renders it through a `format`, and stamps the field automatically - no hand-written number generator.
+`number:` turns a string field into a platform-numbered document field. The intent references a **series by name only** — the number's shape and counter live **outside the model**, and the platform stamps the field automatically; no hand-written number generator.
 
 ```yaml
 # stamped on create (the number exists the moment the record is saved):
-- { name: Number, type: string, number: { series: Proforma, format: "PF{seq:08}", stampOn: create } }
+- { name: Number, type: string, number: { series: Proforma, stampOn: create } }
 
 # stamped at a modeled issue step (a placeholder holds the field until then):
 - name: Number
   type: string
   number:
-    series: SalesInvoice          # documents sharing a sequence pass the same series
-    format: "SI-{year}-{seq:05}"  # {seq} / {seq:0N} / {series} / scope tokens {year}, {<Field>}
-    scope: [year]                 # partitions the counter; omit for one continuous sequence
+    series: Sales Invoice         # documents sharing a sequence pass the same series
+    per: Company                  # optional: a to-one relation whose value partitions the series
     stampOn: issue                # create | issue
 ```
 
-- **`series`** (default: the entity name) — the sequence identity. Give several document types the **same series** to share one running number.
-- **`format`** (default `{series}-{seq:06}`) — `{seq}`, `{seq:0N}` (zero-padded), `{series}`, and scope tokens `{year}` / `{<Field>}`.
-- **`scope`** — `year` and/or sibling field names; partitions the counter and supplies the format's scope tokens.
+- **`series`** (mandatory) — the sequence identity. Give several document types the **same series** to share one running number (a sales invoice, credit note and debit note drawing one legal range).
+- **`per`** — the name of a to-one relation of the same entity whose value **partitions** the series: each distinct value gets its own sequence (the canonical case is `per: Company` — two legal entities never share a counter). The value never appears *in* the number; it only selects which sequence to draw from.
 - **`stampOn`** — `create` stamps the real number on insert; `issue` puts a placeholder on the field at create and stamps the real number when the process reaches the wired step. Stamping is **idempotent** - re-issuing after an amend keeps the same number.
 
-The field is read-only in the UI. Counters are visible and adjustable in the generated application's document-numbering settings.
+**The shape is not the model's to declare.** A number's rendering — a literal prefix plus the sequence zero-padded to a total width — is declared once per module in a **numbering declaration artefact** (a requirement declaration, like roles) and configured per deployment/tenant afterwards, where an operator can adjust prefix, width and the next value. Baking a format into the model was rejected deliberately: it forced a country or customer that wants a different prefix to fork and regenerate the application, when the number's shape is configuration, not intent. Sequences are **continuous and never auto-reset**; allocating from an undeclared series fails loudly rather than minting an unconfigured number.
+
+The field is read-only in the UI. Counters are visible and adjustable in the generated application's document-numbering settings, including seeding a partition's starting number before its first allocation.
+
+::: info Normative
+`number.series` is mandatory; `per` must name a to-one relation of the declaring entity. The removed keys of earlier drafts — `format`, `scope`, `resetOn` — MUST be **rejected at parse** with a message naming the numbering declaration as the new home of the shape: accepting and ignoring them would quietly lose an authored format. Two modules re-declaring the same series differently MUST fail the declaration naming both.
+:::
 
 ## label — a stored display name
 
@@ -143,7 +175,7 @@ A stored, read-only `Name` recomputed on every write, so lookups and dropdowns s
   label: "{Number} - {Date|yyyy MMMM} - {Customer.name}"
 ```
 
-Tokens are the entity's own fields or **one-hop** to-one relation properties (`{Customer.name}`); `|format` is a date pattern for temporal values. Deeper paths are rejected — compose by referencing the related entity's own label (`{Parent.Name}`). It is not allowed next to an authored `name` field, and a token must never reference a `sensitive` field.
+Tokens are the entity's own fields or **one-hop** to-one relation properties (`{Customer.name}`); `|format` is a date pattern for temporal values — a `month` field's `YYYY-MM` value formats through it too (`{period|yyyy MMMM}` renders "2026 July"). Deeper paths are rejected — compose by referencing the related entity's own label (`{Parent.Name}`). It is not allowed next to an authored `name` field, and a token must never reference a `sensitive` field.
 
 ## function — the presentation role
 
@@ -259,6 +291,37 @@ The total is recomputed from the guarded entity's own rows for the incoming reco
 ```
 
 `immutableWhen` requires a `function: EntityStatus` relation; `immutable: true` needs none and is mutually exclusive with it. System / workflow writes stay possible — corrections to an immutable record are flow-generated reversals, never edits.
+
+## locksWithMaster — a child collection that outlives its master's lock
+
+An entity's immutability covers **that entity**. A composition child is a different entity, so a
+master that locks says nothing about whether its child collections should:
+
+```yaml
+- name: Invoice
+  immutableWhen: "Status == 3"        # ISSUED: the document's own content freezes
+- name: InvoiceAllocation
+  locksWithMaster: false              # ...but money keeps being recorded against it
+  relations:
+    - { name: Invoice, kind: manyToOne, to: Invoice, composition: true, required: true }
+```
+
+The canonical case is settlement: an issued invoice's lines are frozen — that is the audit trail —
+while payment allocations against it go on being recorded for months. Content and settlement are
+different lifecycles on the same document.
+
+::: info Normative
+`locksWithMaster` defaults to **true**, so a child that says nothing keeps freezing with its
+master.
+A generator MUST NOT extend a master's user-write immutability to a child collection declared
+`locksWithMaster: false` — including the affordances it renders for that collection, not merely
+the writes it accepts. A read-only rendering that the server would have permitted is the same
+defect as a refused write.
+The declaration is only meaningful on a composition child whose master actually declares
+immutability; a generator MUST reject it elsewhere rather than ignore it, since an inert
+declaration is indistinguishable from a working one until someone needs it.
+It does not apply to a document's own line items, which ARE the document's content.
+:::
 
 ## hierarchy / leafOnly — tree entities
 

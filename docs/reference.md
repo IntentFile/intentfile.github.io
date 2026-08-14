@@ -12,10 +12,13 @@ The quick lookup surface: one line and a minimal snippet per construct. For rule
 | [`entities`](/spec/entities) | tables + CRUD UI + a generated data layer & API |
 | [field / relation attributes](/spec/entities#fields) | uniqueness, layout, read-only, dropdown filtering, cascades |
 | [`pattern`](/spec/entities#fields) | an input-format regular expression enforced in the UI and server-side |
+| [`format`](/spec/entities#fields) | a named input-format preset (`email`) over `pattern` |
+| [`defaultValue`](/spec/entities#defaultvalue-field-defaults) | a field default: column default, satisfies `required`, and seeds a new row in the UI |
 | [`dependsOn`](/spec/relations) | link a dropdown to another, copy a value from the referenced record, or default a line from the open document header |
 | [`function`](/spec/entities#function-the-presentation-role) | an explicit presentation role (Document, Setting, ...) |
 | [`label`](/spec/entities#label-a-stored-display-name) | a stored, read-only display name for lookups |
-| [`number`](/spec/entities#document-numbering) | a platform-numbered, gap-free document field |
+| [`number`](/spec/entities#document-numbering) | a platform-numbered document field drawing from a named series |
+| [`locksWithMaster`](/spec/entities#lockswithmaster-a-child-collection-that-outlives-its-masters-lock) | a child collection that stays writable while its master is locked |
 | [`checks`](/spec/entities#checks-declarative-validations) | cross-field / cross-line validations |
 | [`checks: kind: guard`](/spec/entities#kind-guard-a-precondition-over-an-aggregate) | a precondition over an aggregate: block, mark for a task, or reject |
 | [`immutableWhen` / `immutable`](/spec/entities#immutablewhen-immutable-user-write-immutability) | reject user writes in a status / append-only |
@@ -28,9 +31,11 @@ The quick lookup surface: one line and a minimal snippet per construct. For rule
 | [`function: Attachment` / `Snapshot`](/spec/entities#attachments-and-snapshots) | a Files panel / immutable versioned printed copies |
 | [`forms`](/spec/processes#forms) | task data-entry pages |
 | [`actions`](/spec/processes#actions-custom-buttons) | developer-defined buttons opening custom pages |
-| [`view`](/spec/presentation#view-calendar-range-slots) | calendar / range / slot-booking pages |
+| [`view`](/spec/presentation#view-calendar-range-slots) | an additional calendar / range page, or a slot-booking page |
 | [`documentItemsLayout: chat`](/spec/presentation#documentitemslayout-chat-conversation-threads) | render a document's items as a chat thread |
+| [print `filter` / `match`](/spec/presentation#row-filtering-filter-match) | render one items collection into several purpose-grouped tables |
 | [`reports`](/spec/presentation#reports) | aggregations, charts, dashboard KPI tiles, balance reports |
+| [`scope`](/spec/presentation#lifecycle-scope) | which lifecycle rows an aggregating report counts |
 | [`widgets`](/spec/presentation#widgets-custom-dashboard-tiles) | custom KPI / embedded-page dashboard tiles |
 | [`notifications`](/spec/glue#notifications) | email on create / update / delete |
 | [`notify.forEach`](/spec/glue#one-message-per-related-row-foreach) | fan the block out over a related collection: one message per row |
@@ -41,13 +46,16 @@ The quick lookup surface: one line and a minimal snippet per construct. For rule
 | [`rollups`](/spec/glue#rollups-denormalised-parent-totals) | counts, sums, balance + status maintenance |
 | [`settlements`](/spec/glue#settlements-payment-allocation) | auto-allocation of payments across open invoices |
 | [`expansions`](/spec/glue#expansions-child-rows-from-a-date-span) | generated child rows per day / week / month |
-| [`generates`](/spec/glue#generates-create-from) | one-click document-from-document cloning |
+| [`generates`](/spec/glue#generates-create-from) | one-click document-from-document cloning, mirrored or computed lines |
+| [`generates.prompt`](/spec/glue#prompted-input-prompt) | collect the input the source cannot derive before the create |
 | [`transitions`](/spec/glue#transitions-guarded-status-flips) | guarded on-demand status flips (void / cancel / reopen) |
 | [`postings`](/spec/glue#postings-source-document-to-ledger) | declarative source-document to balanced-document posting - on a status transition, or on create for a lifecycle-less source |
 | [`aggregates`](/spec/glue#aggregates-keyed-cross-entity-totals) | keyed cross-entity totals materialised into their own entity |
 | [`posts`](/spec/glue#posts-derived-rows-on-an-event) | derived ledger rows emitted idempotently on an event |
 | [`personal` / `partner`](/spec/surfaces#personal-and-partner-surfaces) | per-user and per-partner row-scoped surfaces |
 | [`seeds`](/spec/data#seeds) | initial data, CSV-backed sets, translations |
+| [`stage`](/spec/data#stage-what-a-status-means-to-the-lifecycle) | classify a status: draft / live / cancelled / void |
+| [status names](/spec/data#status-references-name-not-number) | reference a status by its seeded name, not its positional id |
 | [`multilingual` / `languages`](/spec/data#multilingual-data) | translation tables + read-time translation overlay |
 | [`permissions`](/spec/surfaces#permissions) | roles |
 
@@ -74,7 +82,7 @@ entities:
 - { name: code,    type: string, unique: true, length: 30 }
 - { name: total,   type: decimal, precision: 18, scale: 2, readOnly: true }
 - { name: period,  type: month }
-- { name: Number,  type: string, number: { series: SalesInvoice, format: "SI-{seq:06}" } }
+- { name: Number,  type: string, number: { series: Sales Invoice, stampOn: create } }
 - { name: Status,  kind: manyToOne, to: OrderStatus, function: EntityStatus, init: 1 }
 - { name: City,    kind: manyToOne, to: City, dependsOn: { relation: Country, filterBy: Country } }
 - { name: Product, kind: manyToOne, to: Product, where: { Type: 1 } }
@@ -158,6 +166,6 @@ The following are parsed (or reserved) but not yet materialised by a generator; 
 
 - Reserved `function` values for upcoming presentations (`Board`, `Gantt`, `Timeline`).
 - **`manyToMany`** — parsed but never materialised; the supported shape is the [explicit intermediate entity](/spec/relations#many-to-many).
-- **Cross-model schedule source** — a schedule's `entity` must be local (the generate target may be cross-model).
+- **Cross-model status names and stage scopes** — a nomenclature owned by another model is seeded there, so its stages and names cannot be resolved from the referencing file; such references are rejected with the numeric-id fallback named.
 - Event-driven document generation (produce a document on an event), a declarative state machine, and shadow audit-history entities (audit *columns* via `audit: true` ship today).
 - Arbitrary resolver-path task assignment beyond `assignee: personal`.

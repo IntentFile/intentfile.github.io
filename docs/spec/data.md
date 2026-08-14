@@ -12,8 +12,10 @@ seeds:
   - name: order-statuses
     entity: OrderStatus
     rows:                                   # inline rows: small nomenclatures
-      - { id: 1, name: DRAFT }
-      - { id: 2, name: ISSUED }
+      - { id: 1, name: DRAFT, stage: draft } # what the status MEANS to the lifecycle
+      - { id: 2, name: ISSUED, stage: live }
+      - { id: 8, name: CANCELLED, stage: cancelled }
+      - { id: 9, name: VOIDED, stage: void }
   - name: cities
     entity: City
     rows:
@@ -38,6 +40,40 @@ Row keys must match a field or relation name **exactly** (case-sensitive). A key
 :::
 
 A seed with `language: <code>` is a **translation** seed: it fills the per-language values of a `multilingual: true` entity, carrying the base row's `id` plus the translatable fields only.
+
+### stage — what a status means to the lifecycle
+
+A seed row of a **status nomenclature** (the target of a `function: EntityStatus` relation) may classify itself with `stage`, a closed vocabulary:
+
+| Stage | Meaning |
+| --- | --- |
+| `draft` | Nobody has issued it yet — visible to its author, not yet economically real. |
+| `live` | It counts: issued, sent, paid — anything in normal circulation. |
+| `cancelled` | Withdrawn before it ever became live. |
+| `void` | Deliberately retired while keeping its number — out of circulation by design. |
+
+The classification exists because a status **id is data, but its meaning is not**: without it, "the rows that count" can only be expressed as a predicate over positional ids, repeated in every report and guard that needs it. With it, the meaning is declared once, where the nomenclature is defined, and consumers resolve it — chiefly a [report's `scope`](/spec/presentation#lifecycle-scope).
+
+::: info Normative
+`stage` is **metadata, not data**: it MUST NOT be emitted as a column of the seeded table. A row carrying `stage` MUST also carry the entity's primary key (the stage classifies that id). A value outside the vocabulary is an authoring error. An entity that declares its own `stage` property cannot be classified this way — the collision MUST be reported rather than resolved by guessing.
+:::
+
+### Status references — name, not number
+
+Everywhere the file names a status — a [transition's](/spec/glue#transitions-guarded-status-flips) `from` and `setStatus`, a relation's `init`, a status-setting step's `value`, [`abortOn`](/spec/processes#aborton-cancel-the-instance-on-a-terminal-status)'s `status`, a [check's](/spec/entities#checks-declarative-validations) `status` / `setStatus`, [`immutableWhen`](/spec/entities#immutablewhen-immutable-user-write-immutability), a [posting's](/spec/glue#postings-source-document-to-ledger) event guard, a [report's](/spec/presentation#reports) `filter` — the seeded **name** may be written instead of the id:
+
+```yaml
+transitions:
+  - { name: VoidInvoice, forEntity: Invoice, from: [ISSUED, SENT], setStatus: VOIDED, when: "Paid == 0" }
+reports:
+  - { name: OverdueInvoices, source: Invoice, filter: "balance > 0 AND Status != VOIDED", measures: ["sum(total)"] }
+```
+
+A status id is **positional**. Inserting a status into the middle of a nomenclature shifts every later id, and every guard authored against the old numbering keeps producing well-formed output that now means a different status — a defect no downstream check can see, because the emitted constant is valid. A name cannot be silently retargeted.
+
+::: info Normative
+A status name is resolved against the seed rows of the nomenclature it belongs to, and the resolution happens before any other validation, so every later rule sees the resolved id. An unresolvable name is an authoring error naming the known statuses — never a silently-kept token. Numeric ids remain valid everywhere. A name has no ordering, so an ordering comparison against one (`Status >= ISSUED`) is an authoring error; express "the rows that count" as a [`scope`](/spec/presentation#lifecycle-scope). A nomenclature owned by another model is seeded there, so a name cannot be resolved against it — such a reference is an authoring error directing the author to the numeric id.
+:::
 
 ## Multilingual data
 
