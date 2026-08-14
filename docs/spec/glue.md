@@ -51,13 +51,16 @@ notifications:
 
 Add **`attach: print`** and the message carries the record's **own document** — the record rendered through its [print template](/spec/presentation#printable-documents) and attached. This is the declarative form of the most common outbound action a business document has: the invoice to its customer, the payslip to its employee, a reminder that carries the invoice it is about.
 
+The **render language**: `language:` fixes the print-template language; `languageFrom: <relation>.<field>` reads it per record from a one-hop to-one path of the entity the message is about (mutually exclusive with `language:`). Absent both — or when the resolved value is blank — the render falls back to the first entry of the application's configured language set at send time.
+
 ```yaml
     notify:
       to: Customer.email                 # literal / direct field / one-hop relation.field
       subject: "Invoice {number}"        # {field} and {relation.field} interpolation
       body: "Dear {Customer.name}, please find invoice {number} attached."
       attach: print                      # render THIS record's print template and attach it
-      language: bg                       # optional print-template language
+      language: bg                       # optional FIXED print-template language
+      # or per record: languageFrom: Customer.locale  (a one-hop relation.field holding the code)
 ```
 
 `attach`'s only value is `print`, and the entity must be a **document** (a header with a line-items child) — that is the shape a print template exists for. Attaching the print of a plain entity is rejected up front rather than silently sending a message without the document it promised. The attachment comes from the record's own data through the same path the interactive print takes, so a document mailed and a document printed are the same document.

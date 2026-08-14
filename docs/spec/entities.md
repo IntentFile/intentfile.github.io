@@ -196,6 +196,18 @@ Two `function` roles attach **files** to a record. Both are composition children
 
 A snapshot requires a **document** master (only a document has a print template to render from). Minting a copy is wired into the workflow: bind the generated snapshot handler (named `<Master>SnapshotGenerator`) as the `delegate:` of a [service task](/spec/processes#service-tasks) at the step that finalises the document — typically right after *issue*. Re-issuing after an amendment keeps the document's number and mints the next version, which pairs naturally with [`immutableWhen`](#immutablewhen-immutable-user-write-immutability) and an issue-stamped [document number](#document-numbering).
 
+The **language** a copy is minted in is a knob on the snapshot child — `language: <code>` fixes the print-template language, or `languageFrom: <relation>.<field>` reads it per record from a one-hop path on the document master (a to-one relation and a string field of its target holding the code — the customer decides the language their invoice is issued in; the path may cross model boundaries like any other reference):
+
+```yaml
+- name: SalesInvoiceCopy
+  function: Snapshot
+  languageFrom: customer.language
+  relations:
+    - { name: SalesInvoice, kind: manyToOne, to: SalesInvoice, composition: true, required: true }
+```
+
+The two knobs are mutually exclusive. Absent both — or when the resolved value is blank — the mint falls back to the first entry of the application's configured language set, resolved at mint time. An unresolvable `languageFrom` path is a generation error, never a silent wrong-language copy. Interactive printing is a separate concern: the print action always renders **live** current data in the language the user picks, while the snapshot panel serves the frozen issued copies — the two coexist on the document's page.
+
 ## Setting entities
 
 ```yaml
