@@ -21,6 +21,27 @@ The intent **never emits application code**. It stops at the model layer. Schema
 
 Each layer is the deterministic input to the one below it. The only fallible, supervised step is turning natural language into an Intent File; every transform below the top layer is a pure function.
 
+## The scope boundary
+
+The altitude table is also a statement of what the format deliberately does **not** model. Three kinds of requirement recur in every real application and are *how*, not *what* — they belong below the model layer, and each has a designated hand-off point that the intent wires in rather than describes:
+
+| Beyond the boundary | Why it is not intent | The hand-off |
+| --- | --- | --- |
+| **Protocol adaptation** — conversation-shaped integration with an external system: certificates, acknowledgments, retries and their backoff, batch and file transports | [`integrations`](/spec/glue#integrations-outbound-http) and [`inbound`](/spec/glue#inbound-webhooks) are one-line call-outs by design; a protocol has state and failure semantics no declaration should pretend to carry | an integration route in the platform's integration technology, feeding the entity's ordinary write path |
+| **Algorithms** — checksums, fuzzy matching, scoring, policy-driven tie-breaking | the format already draws this line for [`pattern`](/spec/entities#fields): a format check, not a semantic one | a [calculated-field call-out](/spec/entities#calculated-fields) or a [service-task `delegate`](/spec/processes#service-tasks), hand-written in the project's custom folder |
+| **Statutory and designed form** — the exact mandated layout of a printed document | the [print template](/spec/presentation#printable-documents) is written create-if-absent *by design*: a formatted, audited artefact adapted by hand | the authored template itself |
+
+The boundary is a feature, not a shortfall. Everything inside it is deterministic, regenerable and reviewable; everything outside it enters through a first-class, documented hand-off instead of a workaround. A format that models the *what* completely and hands the *how* to explicit extension points is more trustworthy than one that pretends to cover everything — and a requirement that falls outside the line is exactly the signal worth reporting, because that is how the vocabulary learns which construct to grow next. The framing, the extension-point inventory and the honesty this implies are on [their own page](/boundary).
+
+The altitude table names two authors: a human, and an AI assistant proposing patches. The assistant is held to the same honesty this specification demands of generators, which must report what they cannot resolve rather than ignore it:
+
+> **Normative.**
+> An authoring assistant that cannot express a requirement in this format MUST say so rather than
+> silently substituting weaker semantics — a manual step proposed where automation was requested is
+> a changed contract, not a smaller change. It MUST NOT drop a stated requirement from a proposal
+> without reporting it. It SHOULD name the category of the gap and the designated hand-off point,
+> and it MUST NOT imply that hand-off code will be generated when it is the developer's to write.
+
 ## Editor-first, not a runtime artefact
 
 The Intent File is an **authoring** artefact, not a runtime one. It gets an editor and an explicit *Generate* step; it is not silently reconciled from a repository behind your back.

@@ -405,6 +405,7 @@ Compare with [`generates`](#generates-create-from): that creates ONE document fr
 - **Every generated glue artefact has an override switch**, so a hand-written class can replace any single generated one.
 - **Secrets and endpoints via `@config:`**, never inline.
 - **Bindings validated at parse** — a dangling `customer.namez` fails fast, not at runtime.
+- **The boundary is stated, not discovered.** What deliberately lives outside the format — protocol, algorithm, statutory form — and the hand-off each one takes is specified in [the scope boundary](/spec/#the-scope-boundary), and an authoring assistant is required to say when a requirement crosses it.
 
 ## See also
 
