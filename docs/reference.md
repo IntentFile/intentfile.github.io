@@ -47,6 +47,13 @@ The quick lookup surface: one line and a minimal snippet per construct. For rule
 | [`integrations`](/spec/glue#integrations-outbound-http) | outbound HTTP on a data change |
 | [`integrations.payload`](/spec/glue#payload-the-declared-envelope) | the declared envelope a message carries, instead of the record as stored |
 | [`inbound`](/spec/glue#inbound-webhooks) | a webhook that creates records |
+| [the event axis](/spec/glue#the-event-axis-lifecycle-and-process-step-events) | what a reacting glue entry binds to: an entity lifecycle event, or a process step reached / completed |
+| [`notifications`](/spec/glue#notifications) | email on an event of the axis |
+| [`notify.forEach`](/spec/glue#one-message-per-related-row-foreach) | fan the block out over a related collection: one message per row |
+| [the notify block / `attach: print`](/spec/glue#the-notify-block-and-attach-print) | send a message about a record - with the record's own document attached - from a process step, a transition or a schedule |
+| [`schedules`](/spec/glue#schedules) | cron: notify or generate records per matching row |
+| [`integrations`](/spec/glue#integrations-outbound-http) | outbound HTTP on a data change |
+| [`inbound`](/spec/glue#inbound-arrivals-from-outside) | records arriving from outside: a webhook, a queue/topic message, a dropped file |
 | [`rollups`](/spec/glue#rollups-denormalised-parent-totals) | counts, sums, balance + status maintenance |
 | [`settlements`](/spec/glue#settlements-payment-allocation) | auto-allocation of payments across open invoices |
 | [`expansions`](/spec/glue#expansions-child-rows-from-a-date-span) | generated child rows per day / week / month |
