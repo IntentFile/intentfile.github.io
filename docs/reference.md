@@ -51,7 +51,7 @@ The quick lookup surface: one line and a minimal snippet per construct. For rule
 | [`posts`](/spec/glue#posts-derived-rows-on-an-event) | derived ledger rows emitted idempotently on an event |
 | [`personal` / `partner`](/spec/surfaces#personal-and-partner-surfaces) | per-user and per-partner row-scoped surfaces |
 | [`seeds`](/spec/data#seeds) | initial data, CSV-backed sets, translations |
-| [`multilingual` / `languages`](/spec/data#multilingual-data) | translation tables + read-time translation overlay |
+| [`multilingual` / `languages`](/spec/data#multilingual-data) | translation tables + read-time translation overlay, on entity reads and report columns alike |
 | [`permissions`](/spec/surfaces#permissions) | roles |
 
 ## Snippets
