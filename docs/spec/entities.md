@@ -63,6 +63,7 @@ Generators map each logical type to a physical column type. `text` is a large-ob
 | Attribute | Effect |
 | --- | --- |
 | `audit: true` | adds the four standard audit columns, populated automatically |
+| `history: true` | records every write as field-level deltas in a shadow history table (see [history](#history-the-change-trail)) |
 | `multilingual: true` | makes string properties translatable (see [multilingual data](/spec/data#multilingual-data)) |
 | `label:` | a stored, read-only display name (see [label](#label-a-stored-display-name)) |
 | `function:` | an explicit presentation role (see [function](#function-the-presentation-role)) |
@@ -356,6 +357,39 @@ The canonical case is settlement: an issued invoice's lines are frozen — that 
 A generator MUST NOT extend a master's user-write immutability to a child collection declared `locksWithMaster: false` — including the **affordances it renders** for that collection, not merely the writes it accepts. A read-only rendering that the server would have permitted is the same defect as a refused write. One declaration governs both halves, so a generator's screen and its server can never disagree about a given collection.
 
 The declaration is only meaningful on a composition child whose master actually declares immutability; a generator MUST reject it elsewhere rather than ignore it, since an inert declaration is indistinguishable from a working one until someone needs it. It does not apply to a document's own line items, which ARE the document's content.
+:::
+
+## history — the change trail
+
+`audit: true` records only the **last** writer and time, in four columns of the row itself. Where a domain has to answer *what changed, from what to what, by whom, when* — for every write, for years — declare a history:
+
+```yaml
+- name: Contract
+  audit: true
+  history: true                  # every write is recorded as field-level deltas
+  fields:
+    - { name: id,     type: integer, primaryKey: true }
+    - { name: amount, type: decimal }
+```
+
+The entity gains a **shadow history table** — a sibling of its own table, like the [multilingual](/spec/data#multilingual-data) language table — carrying one entry per property whose value actually changed on a write: the property, its old value, its new value, who wrote it, when, and whether the write came from a **user** or from the **system** (a roll-up total, a workflow write-back, a recomputed document total). A create is recorded as `null -> value` and a delete as `value -> null`, so the trail alone reconstructs the row at any point in its life. The record's own form shows it as a read-only **History** panel.
+
+The source matters as much as the delta. Once a total the application recomputed and an amount a person typed sit in the same column, nothing downstream can tell them apart — and "who changed this" is the first question asked of a trail.
+
+::: info Normative
+The shadow table is **append-only by construction**: a generator MUST NOT emit any create, update or delete path to it — not a service, not an endpoint, not a UI affordance. Append-only enforced by policy is not append-only.
+
+Every write path the generated data-access layer offers MUST append, including the targeted single-column and multi-column writes the system uses; a path that writes silently is worse than no trail, because the trail then reads as complete.
+
+An entry MUST record whether the write was a user write or a system write.
+
+Only properties whose value actually changed are recorded. Values that differ solely in representation (a decimal of a different scale, a translated overlay of a stored value) are NOT changes, and a generator MUST NOT record them as such.
+
+The primary key and the audit columns are NOT tracked — the key never changes and the audit columns restate what the entry already carries.
+
+A [scoped surface](/spec/surfaces#personal-and-partner-surfaces) that hides `sensitive:` fields MUST NOT be given a history it cannot filter: either the trail it exposes excludes those properties, or it exposes none. Leaking a hidden field's old and new values defeats the scoping exactly.
+
+Rows written outside the generated data-access layer — [seeds](/spec/data#seeds), direct database writes — have no history, and a conforming tool documents that rather than implying completeness.
 :::
 
 ## hierarchy / leafOnly — tree entities
