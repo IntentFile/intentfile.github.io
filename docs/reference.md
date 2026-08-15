@@ -102,6 +102,7 @@ entities:
 - { name: Status,  kind: manyToOne, to: OrderStatus, function: EntityStatus, init: 1 }
 - { name: City,    kind: manyToOne, to: City, dependsOn: { relation: Country, filterBy: Country } }
 - { name: Product, kind: manyToOne, to: Product, where: { Type: 1 } }
+- { name: tags,    kind: manyToMany, to: Tag, through: OrderTag }   # link entity, named
 ```
 
 ### function
@@ -207,5 +208,5 @@ seeds:
 The following are parsed (or reserved) but not yet materialised by a generator; a conforming tool rejects or ignores them with a clear message rather than failing obscurely:
 
 - Reserved `function` values for upcoming presentations (`Board`, `Gantt`, `Timeline`).
-- **`manyToMany`** — parsed but never materialised; the supported shape is the [explicit intermediate entity](/spec/relations#many-to-many).
 - **Cross-model status names and stage scopes** — a nomenclature owned by another model is seeded there, so its stages and names cannot be resolved from the referencing file; such references are rejected with the numeric-id fallback named.
+- **Bridge fields on a generated `manyToMany` link** — the [materialised link entity](/spec/relations#many-to-many) carries only its key and the two foreign keys; a link with data of its own is authored as an explicit intermediate entity.
