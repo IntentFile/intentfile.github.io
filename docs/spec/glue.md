@@ -63,7 +63,7 @@ The **render language**: `language:` fixes the print-template language; `languag
       # or per record: languageFrom: Customer.locale  (a one-hop relation.field holding the code)
 ```
 
-`attach`'s only value is `print`, and the entity must be a **document** (a header with a line-items child) — that is the shape a print template exists for. Attaching the print of a plain entity is rejected up front rather than silently sending a message without the document it promised. The attachment comes from the record's own data through the same path the interactive print takes, so a document mailed and a document printed are the same document.
+`attach` is `print` — the record the block is about — or, inside a fan-out, [`recordPrint`](#one-document-many-recipients-attach-recordprint). With `print` the entity must be a **document** (a header with a line-items child) — that is the shape a print template exists for. Attaching the print of a plain entity is rejected up front rather than silently sending a message without the document it promised. The attachment comes from the record's own data through the same path the interactive print takes, so a document mailed and a document printed are the same document.
 
 ::: tip Failure semantics, per call site
 A recipient that resolves to no address is a **no-op** — recorded and skipped, so a record with nobody to notify never stalls a flow. A `transitions[].notify` can never fail its transition: the status flip is the contract and is already applied when the message is attempted, so a delivery failure is recorded and the transition still succeeds. A sending process step, whose whole purpose *is* the message, fails instead — so the platform's own retry applies.
@@ -83,6 +83,27 @@ Some sends are per-row rather than per-record — a payroll run mails every pays
 ```
 
 The named entity must have exactly **one** to-one relation back to the record: none means the rows are unrelated, several make the intended set ambiguous, and both are rejected rather than mailing a silently wrong set of recipients.
+
+A fan-out is authored on a `transitions[].notify` or a `serviceTask`'s `args.notify`. A `schedules[].notify` already runs once per matched row and a `notifications[]` entry is about the event record, so a `forEach` on either is rejected rather than ignored — an accepted declaration that changes nothing sends a different message than the one that was written down.
+
+### One document, many recipients: `attach: recordPrint`
+
+The mirror shape: the related rows are only the **recipient list**, and the document belongs to the record they hang off — a request for quotation mailed to each invited supplier, an agenda mailed to each participant. `attach: print` cannot express it (it renders the row, which is nobody's document); `attach: recordPrint` renders the fan-out's **anchor record** — the record the block is about — once, for everybody.
+
+```yaml
+    notify:
+      forEach: InvitedSupplier                      # the rows: the recipient list
+      to: Supplier.email                            # the ROW's supplier - the rows ARE the recipients
+      subject: "RFQ {record.number}"                # {record.<field>} = the ANCHOR RECORD's field
+      body: "Dear {Supplier.name}, please quote by {record.deadline}."   # bare = the ROW
+      attach: recordPrint                           # the RECORD's document, rendered once
+```
+
+`recordPrint` is only meaningful inside a fan-out and is rejected without one — outside a fan-out `attach: print` already renders that very record. It is the **anchor** that must be a document (the row need not be), and `language` / `languageFrom` then select the anchor's render language, read off the anchor: there is exactly one render for the whole fan-out, and the same result is attached to every message.
+
+::: info Which record a path reads is written down, never inferred
+Inside a fan-out a **bare** path — the recipient, `{field}`, `{Relation.field}` — resolves against the **ROW**, and the reserved prefix `record.` is the only way to address the anchor: `{record.<field>}` names one field of it, and a longer path is rejected. The recipient can never be record-scoped: the rows *are* the recipients, so a record-scoped address would send the same message to the same address once per row. `record.` outside a fan-out is rejected too, since there every bare path already resolves against the record. Nothing in a rendered message would reveal that the wrong record had been read — so the scope is authored, not guessed.
+:::
 
 ::: warning A fan-out never fails its activity
 It is fail-soft per row at every call site, including the ones that otherwise fail: a row with no recipient is skipped, a delivery failure is recorded, and the activity completes with a per-row summary. Retrying would resend to every recipient already served — a partial fan-out cannot be made idempotent, so the summary is the report.
