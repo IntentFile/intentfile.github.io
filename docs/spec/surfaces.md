@@ -31,7 +31,7 @@ entities:
 A scope's safety is by **construction, not by a filter**: the scoped controller only ever queries the caller's own rows, and a sensitive field is on an allow-list the scoped serialiser never includes. A field hidden only in the UI is cosmetic; `sensitive` is a server-side guarantee.
 :::
 
-A user task can also be routed to the record owner's inbox with the literal `assignee: personal`, which resolves the owner through the `personal:` relation (see [processes](/spec/processes#task-assignment)).
+A user task can also be routed to the record owner's inbox with the literal `assignee: personal`, which resolves the owner through the `personal:` relation, or to whoever a relation walk off the record names — `assignee: { path, fallback }`, whose walk likewise ends at an `identity`-declaring entity (see [processes](/spec/processes#task-assignment)).
 
 ## permissions
 
@@ -46,5 +46,5 @@ Generates a deduplicated set of **roles**. It deliberately does **not** emit URL
 ## See also
 
 - [Entities & fields](/spec/entities) — `sensitive` as a field attribute, and the entity a scope attaches to.
-- [Processes & forms](/spec/processes) — `assignee: personal` task routing.
+- [Processes & forms](/spec/processes) — `assignee: personal` and resolver-path task routing.
 - [Relations & multi-model](/spec/relations) — the to-one relation a scope is declared on.

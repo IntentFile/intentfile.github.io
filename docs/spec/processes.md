@@ -145,7 +145,19 @@ trigger: { onCreate: Order, businessKey: orderNo, businessKeyStrategy: timestamp
 
 ### Task assignment
 
-A user task's `assignee` is a role / candidate-group name, or the literal **`assignee: personal`** to route the task to the **record owner's** inbox (requires the trigger entity to declare a `personal:` relation — see [scoped surfaces](/spec/surfaces)).
+A user task's `assignee` is a role / candidate-group name, or the literal **`assignee: personal`** to route the task to the **record owner's** inbox (requires the trigger entity to declare a `personal:` relation — see [scoped surfaces](/spec/surfaces)), or a **relation walk** off the trigger record:
+
+```yaml
+- name: approve
+  kind: userTask
+  args:
+    assignee: { path: employee.manager, fallback: manager }
+    form: ApproveRequest
+```
+
+Every segment of `path` is a **to-one relation** — the first of the trigger entity, each further one of the previous target — and the walk ends at an entity that declares `identity`, which is what maps a record to a login. A **cross-model** relation may only be the **last** segment: a projection carries the target's own properties but not its relations, so there is nothing to walk on from there. A conforming generator validates every hop when the file is read, so a dangling segment is reported then rather than when the process runs.
+
+`fallback` is **required** and names the candidate group. The walk is resolved when the task is reached, not when the process starts — so a relation an earlier step of the same process set is visible — and when it resolves to nobody (a null hop, a missing record, a blank identity) the task is created **unassigned** and the fallback group can still claim it. That is what makes the unresolvable case total: a resolver path can never mint a task nobody can see.
 
 ## forms
 
@@ -175,4 +187,4 @@ actions:
 
 - [Declarative glue](/spec/glue) — event-driven glue (`wait`, `timeout`, triggers) is generated as integration code alongside the process.
 - [Presentation](/spec/presentation) — the document view a process's status pill and inline task list appear on.
-- [Scoped surfaces & roles](/spec/surfaces) — `assignee: personal` and the roles a candidate group maps to.
+- [Scoped surfaces & roles](/spec/surfaces) — `assignee: personal`, the `identity` a walk ends at, and the roles a candidate group maps to.
