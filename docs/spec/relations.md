@@ -66,7 +66,44 @@ Composition is **opt-in** — most required FKs are plain associations, and comp
 
 ## Many-to-many
 
-There is no `manyToMany` materialisation - the kind is parsed but never turned into a join table. Model n:m as an **explicit intermediate entity** holding a `composition` to one side, a `manyToOne` to the other (which may be cross-model via `model:`), plus any bridge fields:
+An n:m is always an **intermediate (link) entity** — one row per link, holding a `composition` to one side and a `manyToOne` to the other (which may be cross-model via `model:`). It is a real entity: it has a table, it appears as a detail grid with a dropdown under the declaring entity, and it can be seeded, reported on and referenced like any other — which is what a real n:m relationship needs anyway.
+
+You either let `manyToMany` write that entity, or you write it yourself when the link carries data of its own.
+
+### `manyToMany` — the link written for you
+
+```yaml
+- name: Order
+  relations:
+    - { name: products, kind: manyToMany, to: Product }                  # link entity OrderProduct
+    - { name: tags,     kind: manyToMany, to: Tag, through: OrderTag }   # named link entity
+    - { name: parts,    kind: manyToMany, to: Part, model: parts }       # cross-model target
+```
+
+`Order.products` materialises, before validation and generation:
+
+```yaml
+- name: OrderProduct                    # <Declaring><Target>, or the name given by `through:`
+  fields:
+    - { name: id, type: integer, primaryKey: true, generated: true }
+  relations:
+    - { name: Order,   kind: manyToOne, to: Order, composition: true, required: true }
+    - { name: Product, kind: manyToOne, to: Product, required: true }
+```
+
+and the authored relation becomes the navigation-only `oneToMany` to the link entity, so the model holds exactly one representation of the n:m.
+
+Rules:
+
+- Declare an n:m on **one** side only — it is one link table, not two. Declaring it from both sides is an error naming the pair.
+- The attributes that describe the **target picker** — `where`, `show`, `major`, `size`, `leafOnly` — are allowed and travel onto the link's target relation.
+- The attributes that describe a hand-authored to-one — `composition`, `function`, `init`, `dependsOn`, calculated actions, `personal`, `partner` — are **rejected** on a `manyToMany` (they belong on the relations of an explicit intermediate entity), rather than accepted and ignored.
+- `through:` is valid on `manyToMany` only. Use it to give the link a domain name (`Enrollment` rather than `StudentCourse`) or to keep two n:m relations between the same pair apart. A generated name that collides with a declared entity is an error, not a silent merge.
+- A self-referencing n:m (both ends the same entity) is legitimate; the link's two ends are named apart.
+
+### An explicit intermediate entity — a link with data
+
+When the link carries **bridge fields** — a quantity, a partial amount, a valid-from date — or a lifecycle of its own, write the entity out and drop the `manyToMany`:
 
 ```yaml
 - name: SalesInvoiceCustomerPayment
@@ -77,8 +114,6 @@ There is no `manyToMany` materialisation - the kind is parsed but never turned i
     - { name: SalesInvoice,    kind: manyToOne, to: SalesInvoice,    composition: true, required: true }
     - { name: CustomerPayment, kind: manyToOne, to: CustomerPayment, model: customer-payments, required: true }
 ```
-
-The intermediate entity is a real entity you can read, seed and report on — which is usually what a real n:m relationship needs anyway.
 
 ## Multi-model applications
 
