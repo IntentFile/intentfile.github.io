@@ -36,7 +36,7 @@ Generates a seed-import descriptor + CSV per seed. Two shapes:
 - **`file: data/<name>.csv`** — an authored CSV under a `data/` subfolder, right for bulk nomenclatures and prepopulated demo data. A foreign key is set by the relation name (`Country: 34`).
 
 ::: info Normative
-Row keys must match a field or relation name **exactly** (case-sensitive). A key matching neither is an authoring error — a silently dropped column becomes a NOT NULL failure at import time.
+Row keys must match a field name, a **to-one** relation name (a collection has no column to set), or the `stage` marker below, **exactly** (case-sensitive). A key matching none of those is an authoring error, reported with the nearest declared name — see [unrecognised keys](/spec/#unrecognised-keys). Accepting it would drop the column, and a dropped NOT NULL foreign key makes the import skip **every** row: a nomenclature that imports as zero rows, behind a fully green pipeline.
 :::
 
 A seed with `language: <code>` is a **translation** seed: it fills the per-language values of a `multilingual: true` entity, carrying the base row's `id` plus the translatable fields only.

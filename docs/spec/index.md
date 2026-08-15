@@ -167,6 +167,22 @@ These rules keep the file diff-stable, safe to parse, and friendly for both huma
 - **No type tags.** Blocked by the safe parser.
 - **Quote unquoted braces in scalars.** `to: {member.email}` is parsed by YAML as an object, not a string - write `to: member.email`. Braces are only for `{...}` interpolation inside `subject` / `body` text.
 - **An event-binding key is `event:`, never `on:`** - YAML 1.1 resolves a bare `on` (and `off` / `yes` / `no`) to a boolean. An action key is `do:`.
+- **Only the keys this specification declares exist, and they are case-sensitive.** An invented key, or a case slip (`Required:` for `required:`), is an authoring error - never a key that is accepted and ignored.
+
+### Unrecognised keys
+
+A typed mapping normally drops a key it does not know. That silence is the worst failure this format can have: the file is accepted, generation succeeds, the application deploys, and the only symptom is that the promise the author wrote is absent at runtime - with every step of the pipeline reporting success. The rule is therefore the same one the format applies to a reference it cannot resolve.
+
+::: info Normative
+A conforming generator MUST report a key it does not recognise as an authoring error rather than
+ignoring it, and the report MUST name the key, where it appears, and - where one exists - the
+nearest declared name. Key names are **case-sensitive**: a key differing from a declared one only in
+case is unrecognised, and the report SHOULD say so, since it is the slip hardest to see by eye. This
+applies equally to a [seed row](/spec/data#seeds), whose keys are the target entity's own names
+rather than this specification's. A map whose keys are drawn from the model being described (a
+`map:` projection, a relation's `where:`, a widget's `at:`) is validated against that model, not
+against this vocabulary.
+:::
 
 ## In this section
 
