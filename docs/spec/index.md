@@ -180,8 +180,20 @@ nearest declared name. Key names are **case-sensitive**: a key differing from a 
 case is unrecognised, and the report SHOULD say so, since it is the slip hardest to see by eye. This
 applies equally to a [seed row](/spec/data#seeds), whose keys are the target entity's own names
 rather than this specification's. A map whose keys are drawn from the model being described (a
-`map:` projection, a relation's `where:`, a widget's `at:`) is validated against that model, not
-against this vocabulary.
+`map:` projection, a relation's `where:`, a widget's `at:`, a delegate's injected `fields:`) is
+validated against that model, not against this vocabulary.
+:::
+
+Being written as a mapping does not make a block free-form. A process [`trigger:`](/spec/processes),
+an [`abortOn:`](/spec/processes#aborton-cancel-the-instance-on-a-terminal-status), a glue
+[`event:`](/spec/glue#notifications) binding, a step's [`args:`](/spec/processes) and the blocks
+nested inside them are each a fixed vocabulary, and a key outside it is unrecognised like any other.
+
+::: info Normative
+A step's `args:` are recognised **per step kind**: an argument declared on a kind that does not read
+it (a decision's `if` on a user task, a boundary `timeout` on a service task) MUST be reported like
+an unrecognised one, and the report SHOULD name the kind that does read it. This is the same failure
+and not a lesser one - the step reads nothing, so the argument does nothing.
 :::
 
 ## In this section
