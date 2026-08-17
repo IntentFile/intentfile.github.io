@@ -25,6 +25,7 @@ The quick lookup surface: one line and a minimal snippet per construct. For rule
 | [calculated fields](/spec/entities#calculated-fields) | server + UI-evaluated expressions, date helpers, call-outs |
 | [`relations` / `composition`](/spec/relations#relations) | associations and master-detail compositions |
 | [`uses`](/spec/relations#multi-model-applications) | reuse entities owned by another intent model |
+| [`related`](/spec/relations#related) | a read-only register of the records referencing this entity, on its own page |
 | [`processes`](/spec/processes#processes) | workflows: user tasks, decisions, waits, boundary timers |
 | [`abortOn`](/spec/processes#aborton-cancel-the-instance-on-a-terminal-status) | cancel the running instance when the document reaches a terminal status |
 | [`function: Attachment` / `Snapshot`](/spec/entities#attachments-and-snapshots) | a Files panel / immutable versioned printed copies |
