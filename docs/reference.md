@@ -11,6 +11,8 @@ The quick lookup surface: one line and a minimal snippet per construct. For rule
 | --- | --- |
 | [`entities`](/spec/entities) | tables + CRUD UI + a generated data layer & API |
 | [field / relation attributes](/spec/entities#fields) | uniqueness, layout, read-only, dropdown filtering, cascades |
+| [`entities.unique`](/spec/entities#unique-a-business-key-over-more-than-one-field) | a business key spanning more than one field or to-one relation |
+| [`visibleTo`](/spec/entities#role-scoped-field-visibility-visibleto) | an allow-list of roles that may read one field, enforced on the wire |
 | [`pattern`](/spec/entities#fields) | an input-format regular expression enforced in the UI and server-side |
 | [`defaultValue`](/spec/entities#defaultvalue-field-defaults) | a field default: column default, satisfies `required`, and seeds a new row in the UI |
 | [`dependsOn`](/spec/relations) | link a dropdown to another, copy a value from the referenced record, or default a line from the open document header |
@@ -39,29 +41,23 @@ The quick lookup surface: one line and a minimal snippet per construct. For rule
 | [`reports`](/spec/presentation#reports) | aggregations, charts, dashboard KPI tiles, balance reports |
 | [`scope`](/spec/presentation#lifecycle-scope) | which lifecycle rows an aggregating report counts |
 | [`widgets`](/spec/presentation#widgets-custom-dashboard-tiles) | custom KPI / embedded-page dashboard tiles |
-| [`notifications`](/spec/glue#notifications) | email on create / update / delete |
 | [`notify.forEach`](/spec/glue#one-message-per-related-row-foreach) | fan the block out over a related collection: one message per row, every bare path resolved against the row |
 | [`attach: recordPrint`](/spec/glue#one-document-many-recipients-attach-recordprint) | in a fan-out: attach the ANCHOR record's document, rendered once, to every recipient (`{record.<field>}` addresses that record) |
-| [the notify block / `attach: print`](/spec/glue#the-notify-block-and-attach-print) | send a message about a record - with the record's own document attached - from a process step, a transition or a schedule |
-| [`schedules`](/spec/glue#schedules) | cron: notify or generate records per matching row |
-| [`integrations`](/spec/glue#integrations-outbound-http) | outbound HTTP on a data change |
-| [`integrations.payload`](/spec/glue#payload-the-declared-envelope) | the declared envelope a message carries, instead of the record as stored |
-| [`inbound`](/spec/glue#inbound-webhooks) | a webhook that creates records |
+| [`payload`](/spec/glue#payload-the-declared-envelope) | the declared envelope an outward-facing message carries (integrations and outbound alike), instead of the record as stored |
 | [the event axis](/spec/glue#the-event-axis-lifecycle-and-process-step-events) | what a reacting glue entry binds to: an entity lifecycle event, or a process step reached / completed |
 | [`notifications`](/spec/glue#notifications) | email on an event of the axis |
 | [notify link placeholders](/spec/glue#links-back-to-the-application-recordurl-inboxurl-appurl) | `{recordUrl}` / `{inboxUrl}` / `{appUrl}` - a message that carries the way back into the application |
-| [`notify.forEach`](/spec/glue#one-message-per-related-row-foreach) | fan the block out over a related collection: one message per row |
 | [the notify block / `attach: print`](/spec/glue#the-notify-block-and-attach-print) | send a message about a record - with the record's own document attached - from a process step, a transition or a schedule |
-| [`schedules`](/spec/glue#schedules) | cron: notify or generate records per matching row |
+| [`schedules`](/spec/glue#schedules) | cron: notify or generate records per matching row; `where` values may be moments relative to the firing |
 | [`integrations`](/spec/glue#integrations-outbound-http) | outbound HTTP on a data change |
 | [`inbound`](/spec/glue#inbound-arrivals-from-outside) | records arriving from outside: a webhook, a queue/topic message, a dropped file |
-| [`inbound`](/spec/glue#inbound-webhooks) | a webhook that creates records |
 | [`outbound`](/spec/glue#outbound-departures-on-a-queue-or-a-topic) | a record emitted on a queue or a topic when an event fires |
 | [`rollups`](/spec/glue#rollups-denormalised-parent-totals) | counts, sums, balance + status maintenance |
 | [`settlements`](/spec/glue#settlements-payment-allocation) | auto-allocation of payments across open invoices |
 | [`expansions`](/spec/glue#expansions-child-rows-from-a-date-span) | generated child rows per day / week / month |
 | [`generates`](/spec/glue#generates-create-from) | one-click document-from-document cloning |
 | [`generates.event`](/spec/glue#event-driven-creation-event) | mint the document on a source event instead of a click, at most once |
+| [`resolves`](/spec/glue#resolves-fill-a-relation-from-a-register-valid-on-a-date) | fill a to-one from the register row valid on the record's date |
 | [`transitions`](/spec/glue#transitions-guarded-status-flips) | guarded on-demand status flips (void / cancel / reopen) |
 | [`postings`](/spec/glue#postings-source-document-to-ledger) | declarative source-document to balanced-document posting - on a status transition, or on create for a lifecycle-less source |
 | [`aggregates`](/spec/glue#aggregates-keyed-cross-entity-totals) | keyed cross-entity totals materialised into their own entity |
@@ -184,10 +180,5 @@ seeds:
 The following are parsed (or reserved) but not yet materialised by a generator; a conforming tool rejects or ignores them with a clear message rather than failing obscurely:
 
 - Reserved `function` values for upcoming presentations (`Board`, `Gantt`, `Timeline`).
-- **Cross-model status names and stage scopes** — a nomenclature owned by another model is seeded there, so its stages and names cannot be resolved from the referencing file; such references are rejected with the numeric-id fallback named.
 - **`manyToMany`** — parsed but never materialised; the supported shape is the [explicit intermediate entity](/spec/relations#many-to-many).
-- A declarative state machine, and shadow audit-history entities (audit *columns* via `audit: true` ship today).
-- Event-driven document generation (produce a document on an event), and shadow audit-history entities (audit *columns* via `audit: true` ship today).
-- Event-driven document generation (produce a document on an event) and a declarative state machine.
-- Arbitrary resolver-path task assignment beyond `assignee: personal`.
-- Event-driven document generation (produce a document on an event), a declarative state machine, and shadow audit-history entities (audit *columns* via `audit: true` ship today).
+- **Cross-model status names and stage scopes** — a nomenclature owned by another model is seeded there, so its stages and names cannot be resolved from the referencing file; such references are rejected with the numeric-id fallback named.

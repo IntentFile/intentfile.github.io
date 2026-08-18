@@ -1,7 +1,6 @@
 ---
 title: Declarative glue
-description: notifications, schedules, integrations, inbound arrivals (webhook, message, file), roll-ups, keyed aggregates, settlements, expansions, generates, transitions, postings and event-driven row posting - declared in the intent, generated as integration code, never hand-written.
-description: notifications, schedules, integrations, inbound webhooks, outbound departures, roll-ups, keyed aggregates, settlements, expansions, generates, transitions, postings and event-driven row posting - declared in the intent, generated as integration code, never hand-written.
+description: notifications, schedules, integrations, inbound arrivals (webhook, message, file), outbound departures, roll-ups, keyed aggregates, settlements, expansions, resolves, generates, transitions, postings and event-driven row posting - declared in the intent, generated as integration code, never hand-written.
 ---
 
 # Declarative glue
@@ -362,7 +361,6 @@ A bare word that names no field and no to-one relation of the record is a **lite
 
 Three value forms and four tokens is the cap, and the cap is the point: it expresses a frozen contract without the construct becoming a transformation language. A payload that needs more than this is an algorithm, and belongs in a hand-written handler — the honest hand-off.
 
-## inbound — webhooks
 ## inbound — arrivals from outside
 
 Another system tells us — a JSON record shaped like the entity, ingested into it. What differs between the three forms is only **where the record arrives**; the action is the same `create`.
@@ -556,6 +554,36 @@ Declaring an `event` drops the button unless `button: true` is declared as well;
 `sourceStatus:` composes unchanged: the flip happens once the target exists, and cannot re-trigger the create-from because the guard has already claimed the source.
 
 Prefer this over [`posts`](#posts-derived-rows-on-an-event) when the result is a document with line items — `posts` emits flat mapped rows and cannot reference the freshly created header. Prefer it over a button plus a [`wait`](/spec/processes#wait-park-the-process-on-a-data-event) step when the step is really waiting for a person to remember to click: an unclicked record parks its process instance indefinitely.
+
+## resolves — fill a relation from a register valid on a date
+
+Set a to-one from the row of a **register** whose validity period covers a date the record carries. The register says "X applied to Y from A to B" — a vehicle assignment, a price list, a contract in force, an org assignment — and the record carries the match key(s) and the date:
+
+```yaml
+resolves:
+  - name: identifyDriver
+    event: { onCreate: Fine }               # onCreate or onUpdate, optional `when` guard
+    set: driver                             # the to-one of Fine this fills
+    from: VehicleAssignment                 # the register
+    match: { vehicle: vehicle }             # register property <- record property (one or more)
+    between: { start: validFrom, end: validTo, value: violationAt }
+    outcome: resolution                     # optional string field: found / notFound / ambiguous
+    found:     { setStatus: IDENTIFIED }
+    notFound:  { setStatus: UNRESOLVED }
+    ambiguous: { setStatus: UNRESOLVED }
+```
+
+Nothing else in the format reaches this shape: [`dependsOn`](/spec/relations) is an authoring-time copy matched by equality, a [`decision`](/spec/processes) condition is a single comparison, and a `setField` step writes a constant. Without it every application hand-writes the same query-and-classify code.
+
+**Normative.** A lookup MUST declare exactly one of `onCreate` / `onUpdate` naming a declared entity; `onDelete` MUST be rejected, since there is no record left to fill. `set` MUST name a to-one relation of that entity, `from` a declared register entity, and `match` at least one pair whose left side is a property of the register and whose right side a property of the record. `between.value` MUST name a date field of the record; `between.start` and `between.end` name date fields of the register and MAY each be omitted, in which case that side of the period is open. The end of a period is **inclusive**, and a bound expressed as a date (rather than an instant) covers its whole day.
+
+**Normative.** The register MUST carry exactly one to-one relation to the entity `set` points at; that relation is the value the lookup copies. Zero or more than one MUST be rejected — a register offering a choice of columns to copy is a modelling ambiguity, and guessing one would defeat the construct's purpose.
+
+**Normative.** All three outcomes are first-class and MUST be distinguished. Exactly one covering row fills the relation. No covering row (`notFound`) and more than one covering row (`ambiguous`) MUST both leave the relation unset: a conforming generator MUST NOT choose between candidate rows. Each outcome MAY carry a `setStatus` routing the record, which requires the record to declare a `function: EntityStatus` relation and accepts a [status name](/spec/data#status-references-name-not-number) as well as an id.
+
+**Normative.** The attempt MUST be observable. When `outcome` names a `string` field of the record, that field MUST be stamped with `found`, `notFound` or `ambiguous`, so unresolved records form a filterable worklist a person can finish and a process [`decision`](/spec/processes) can branch on the result. A conforming generator SHOULD additionally log the keys and the date it checked.
+
+**Normative.** A record that already carries the relation MUST be skipped, so a manual correction is never overwritten and a re-delivered event is a no-op. The resolved relation, the outcome and the status MUST be written as one targeted update of those columns only, leaving every other column of the record — and any concurrent write to it — untouched.
 
 ## transitions — guarded status flips
 

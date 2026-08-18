@@ -35,12 +35,13 @@ The boundary is a feature, not a shortfall. Everything inside it is deterministi
 
 The altitude table names two authors: a human, and an AI assistant proposing patches. The assistant is held to the same honesty this specification demands of generators, which must report what they cannot resolve rather than ignore it:
 
-> **Normative.**
-> An authoring assistant that cannot express a requirement in this format MUST say so rather than
-> silently substituting weaker semantics — a manual step proposed where automation was requested is
-> a changed contract, not a smaller change. It MUST NOT drop a stated requirement from a proposal
-> without reporting it. It SHOULD name the category of the gap and the designated hand-off point,
-> and it MUST NOT imply that hand-off code will be generated when it is the developer's to write.
+::: info Normative
+An authoring assistant that cannot express a requirement in this format MUST say so rather than
+silently substituting weaker semantics — a manual step proposed where automation was requested is
+a changed contract, not a smaller change. It MUST NOT drop a stated requirement from a proposal
+without reporting it. It SHOULD name the category of the gap and the designated hand-off point,
+and it MUST NOT imply that hand-off code will be generated when it is the developer's to write.
+:::
 
 ## Editor-first, not a runtime artefact
 

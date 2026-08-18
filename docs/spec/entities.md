@@ -39,6 +39,7 @@ fields:
 | `pattern` | an input-format regular expression the value must match (string / text fields only) |
 | `defaultValue` | the field's default: the column default, the reason a `required` field is not demanded from the caller, and the value a **new** row is seeded with in the UI (see [Field defaults](#defaultvalue-field-defaults)) |
 | `unique` | a UNIQUE constraint (e.g. a code or business key) |
+| `visibleTo` | an allow-list of roles that may read the field, enforced where the data leaves the server (see [Role-scoped field visibility](#role-scoped-field-visibility-visibleto)) |
 | `precision` / `scale` | override the decimal default (16, 2) |
 | `readOnly` | rendered read-only in the UI (e.g. a calculated total) |
 | `major: false` | keep the column off the compact list table (still on the detail page) |
@@ -85,6 +86,36 @@ By default the generated UI controls follow declaration order - all fields first
 ```
 
 Names match field / relation names (case-insensitive). A partial order is fine - any property not listed keeps its default position and is appended after the listed ones.
+
+## unique — a business key over more than one field
+
+`unique: true` on a field constrains one column. When what makes a row unique spans several,
+declare it on the entity instead:
+
+```yaml
+entities:
+  - name: TenantApplication
+    unique:
+      - { fields: [tenant, application], message: "This application is already provisioned for the tenant" }
+```
+
+`fields` names fields or to-one relations of the same entity; a to-one relation contributes its
+foreign-key column. The key is the combination of those columns - the declared order is how it
+reads, and a conforming implementation is not required to give it any physical meaning. `message` is what a caller is told when a
+write collides; omitted, an implementation derives one from the names.
+
+::: info Normative
+The key MUST be enforced by the data store, so that it holds for every writer — a form, an import,
+an arriving message, a scheduled creation — and not only for the ones that route through the
+application.
+A colliding write MUST be reported as a conflict that a caller can distinguish from a generic
+failure, carrying the authored `message` when one was given.
+Every name MUST resolve to a field or a to-one relation of the same entity; a to-many MUST be
+rejected, having no column on this side to constrain.
+A key naming a single field MUST be rejected, naming the field-level `unique` it duplicates.
+A name repeated within one key, and a key declared twice on one entity, MUST be rejected.
+An implementation is NOT required to add the constraint to a table that already exists.
+:::
 
 ## defaultValue — field defaults
 
@@ -296,6 +327,55 @@ The total is recomputed from the guarded entity's own rows for the incoming reco
 
 `outcome: task` stamps a flag; it does not create or route to a task. A workflow [decision](/spec/processes#decision-steps) reads the marker and routes the record - the two constructs compose, and the guard is the part that computes.
 
+## Role-scoped field visibility — `visibleTo`
+
+A field is normally as visible as its entity. `visibleTo` narrows one field to the callers holding
+**any one** of the listed roles — the salary on an employee, the cost price on an order line, the
+credit limit on a customer — without splitting the record into a satellite entity:
+
+```yaml
+permissions:
+  - { role: Payroll }
+  - { role: Administrator }
+
+entities:
+  - name: Employee
+    fields:
+      - { name: id,        type: integer, primaryKey: true, generated: true }
+      - { name: name,      type: string,  required: true }
+      - { name: dailyRate, type: decimal, visibleTo: [Payroll, Administrator] }
+```
+
+Absent (the default), nothing changes: the field is visible to every caller who may read the
+entity. The inverse spelling (`hiddenFor:`) is deliberately not part of the format — a deny-list
+fails open (a role added later, or misspelled, would see the value); an allow-list fails closed.
+
+::: info Normative
+A conforming generator MUST enforce the list where the data leaves the server, never only in the
+presentation layer. On a **read**, the property is absent (or null) in every response of every
+generated surface — the main one and the scoped ones — unless the caller holds one of the roles;
+owning the record, or being the partner it belongs to, grants nothing. On a **write**, a create
+ignores the submitted value and an update keeps the stored one — the rest of the write is
+legitimate and MUST NOT be refused for carrying a field that is not the caller's to set. Where
+the format records a field-level [history](/spec/entities#history-the-change-trail), a restricted property's
+entries are withheld from a caller who may not read it. A derived value fed by a restricted field
+(a [roll-up](/spec/glue#rollups-denormalised-parent-totals), an aggregated master total, a
+[keyed aggregate](/spec/glue#aggregates-keyed-cross-entity-totals)) inherits the same allow-list unless it
+declares its own — a sum of hidden figures is that figure one entity out. The generated UI SHOULD
+omit the column or input for a caller who cannot read the field, and MUST derive that from what
+the server actually withheld, not from a role list evaluated in the client.
+:::
+
+Edge rules: every listed role must be granted by the file's [`permissions`](/spec/surfaces#permissions) (a role
+nothing grants hides the field from everybody, which is a typo far more often than an intention);
+an empty list is rejected rather than read as "no restriction"; the primary key, the entity's
+`identity` field and a document-title field cannot be restricted (hiding them breaks the page, not
+the figure); a restricted field cannot be a [`label`](/spec/entities#label-a-stored-display-name) token. A
+**report** over a restricted field is a warning, not a rejection — a report carries no field-level
+scoping, so the author is told which report re-serves which figure and scopes the report's own
+roles accordingly. `sensitive` and `visibleTo` are independent and compose: the first is about a
+surface, the second about a role. A relation (a foreign key) cannot be restricted this way.
+
 ## immutableWhen / immutable — user-write immutability
 
 ```yaml
@@ -330,9 +410,13 @@ Everything else about statuses is stated one edge at a time: `init:` says where 
 - The graph is always over the entity's `function: EntityStatus` relation, so it names no column; the nomenclature must be seeded in the same file (a status entity owned by another model is seeded there, and so is its lifecycle).
 - A status not listed as any `from` is **terminal**; a status listed nowhere is simply unreachable through this entity.
 
-> **Normative.** A conforming generator MUST validate every status write against the graph — user, workflow, glue, transition button alike — and reject a move no edge declares, with a message naming both statuses. Enforcement therefore belongs to the layer every writer passes through (the generated persistence layer), never to the transition endpoints alone, which would leave every other writer unguarded. Where the status relation declares `init:`, a record MUST also be *created* in that status: entering the lifecycle anywhere else skips the graph rather than travelling it.
+::: info Normative
+A conforming generator MUST validate every status write against the graph — user, workflow, glue, transition button alike — and reject a move no edge declares, with a message naming both statuses. Enforcement therefore belongs to the layer every writer passes through (the generated persistence layer), never to the transition endpoints alone, which would leave every other writer unguarded. Where the status relation declares `init:`, a record MUST also be *created* in that status: entering the lifecycle anywhere else skips the graph rather than travelling it.
+:::
 
-> **Normative.** With a lifecycle declared, `transitions` become **presentation over its edges**: each `from` status of a transition MUST reach its `setStatus` along a declared edge, and a status written by a workflow step or forced by a check's rejection MUST be one that some edge reaches. A conforming generator reports the disagreement when the file is read, not when the button is pressed — a reject path transiting through an approved status is exactly the mistake the graph exists to catch.
+::: info Normative
+With a lifecycle declared, `transitions` become **presentation over its edges**: each `from` status of a transition MUST reach its `setStatus` along a declared edge, and a status written by a workflow step or forced by a check's rejection MUST be one that some edge reaches. A conforming generator reports the disagreement when the file is read, not when the button is pressed — a reject path transiting through an approved status is exactly the mistake the graph exists to catch.
+:::
 
 It composes with the [`stage:` classification](/spec/data#stage-what-a-status-means-to-the-lifecycle): a stage says what a status *means* (draft, live, cancelled, void) and scopes reports by it; the lifecycle says how a record may *move* between statuses.
 
