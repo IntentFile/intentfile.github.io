@@ -306,9 +306,15 @@ The total is recomputed from the guarded entity's own rows for the incoming reco
 
 `immutableWhen` requires a `function: EntityStatus` relation; `immutable: true` needs none and is mutually exclusive with it. System / workflow writes stay possible — corrections to an immutable record are flow-generated reversals, never edits.
 
+The lock also covers the entity's **composition children**. A child declares no immutability of its own, but its writes maintain the master's derived values — a line resums the document's totals — so a line write on a locked document reaches exactly what the lock protects: the totals a stamped number, a frozen copy and a posted ledger entry were all taken from. [`locksWithMaster`](#lockswithmaster-a-child-collection-that-outlives-its-masters-lock) is how a collection opts out.
+
+::: info Normative
+A generator MUST refuse a user create, update or delete of a composition child whose master is currently immutable, unless that child declares `locksWithMaster: false`. The refusal MUST cover every user surface it generates, not only the affordances it renders — permitting the write through a different door undoes the lock as surely as removing it. It MUST NOT extend to system / workflow writes, which are what corrects an immutable record.
+:::
+
 ## locksWithMaster — a child collection that outlives its master's lock
 
-An entity's immutability covers **that entity**. A composition child is a different entity, so a master that locks says nothing about whether its child collections should:
+An entity's immutability covers that entity **and the collections composed into it**. For some children that is wrong — a master that freezes its content says nothing about a collection recording what happens to the document afterwards:
 
 ```yaml
 - name: Invoice
@@ -322,9 +328,9 @@ An entity's immutability covers **that entity**. A composition child is a differ
 The canonical case is settlement: an issued invoice's lines are frozen — that is the audit trail — while payment allocations against it go on being recorded for months. Content and settlement are different lifecycles on the same document.
 
 ::: info Normative
-`locksWithMaster` defaults to **true**, so a child that says nothing keeps freezing with its master.
+`locksWithMaster` defaults to **true**, so a child that says nothing keeps freezing with its master — in the affordances a generator renders for that collection AND in the writes it accepts for it.
 
-A generator MUST NOT extend a master's user-write immutability to a child collection declared `locksWithMaster: false` — including the **affordances it renders** for that collection, not merely the writes it accepts. A read-only rendering that the server would have permitted is the same defect as a refused write.
+A generator MUST NOT extend a master's user-write immutability to a child collection declared `locksWithMaster: false` — including the **affordances it renders** for that collection, not merely the writes it accepts. A read-only rendering that the server would have permitted is the same defect as a refused write. One declaration governs both halves, so a generator's screen and its server can never disagree about a given collection.
 
 The declaration is only meaningful on a composition child whose master actually declares immutability; a generator MUST reject it elsewhere rather than ignore it, since an inert declaration is indistinguishable from a working one until someone needs it. It does not apply to a document's own line items, which ARE the document's content.
 :::
