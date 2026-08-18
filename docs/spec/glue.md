@@ -1,6 +1,7 @@
 ---
 title: Declarative glue
 description: notifications, schedules, integrations, inbound arrivals (webhook, message, file), roll-ups, keyed aggregates, settlements, expansions, generates, transitions, postings and event-driven row posting - declared in the intent, generated as integration code, never hand-written.
+description: notifications, schedules, integrations, inbound webhooks, outbound departures, roll-ups, keyed aggregates, settlements, expansions, generates, transitions, postings and event-driven row posting - declared in the intent, generated as integration code, never hand-written.
 ---
 
 # Declarative glue
@@ -345,6 +346,48 @@ That is why a `folder` source requires its `cron` (and why a `cron` is an error 
 :::
 
 Conversation-shaped transports — acknowledgements, retries with backoff, certificates — stay [beyond the boundary](/spec/#the-scope-boundary): they have state and failure semantics no one-line declaration should pretend to carry.
+
+## outbound — departures on a queue or a topic
+
+The mirror of `inbound`: the application **raises a business event** for something outside it, on a message channel rather than over HTTP.
+
+```yaml
+outbound:
+  # the record's own representation, on a queue — one consumer takes each message
+  - { name: publishOrder, event: { onCreate: Order }, to: { queue: "orders.outbound" } }
+
+  # a declared envelope, on a topic — every subscriber receives it
+  - name: announceActivation
+    event: { onUpdate: Order, when: "channel != internal" }
+    to: { topic: "order-activations" }
+    payload:
+      type: "order.activated"
+      version: 1
+      messageId: "{uuid}"
+      tenantId: "{tenant}"
+      reference: number
+      customer: customer.name
+```
+
+`to:` names the channel; `payload:` is the same [declared envelope](#payload-the-declared-envelope) an integration sends, and without it the body is the record as stored — exactly what an integration forwards today.
+
+Use `integrations` when you are calling another system's API and want its answer; use `outbound` when you are announcing that something happened and nobody answers. The two are separate constructs rather than one with a transport switch precisely because their failure semantics differ: a failed call is a failed call, a failed announcement is a missed announcement.
+
+::: info Normative
+An entry MUST declare **exactly one** of `queue` / `topic`. Two channels are two departures wearing one name; none is a promise with nowhere to land — both MUST be reported as authoring errors, mirroring the arrival rule.
+
+A departure binds to the same event axis as every other reacting block, and takes the same `when:` guard.
+
+The message MUST be published **after** the write that raised the event is persisted, and MUST NOT be transactional with it: a failure MUST be recorded and MUST NOT fail that write.
+
+Ordering, exactly-once delivery and an outbox are NOT promised. A conforming implementation MUST state this rather than leave an author to assume otherwise — an author who believes there is an outbox writes a different application than one who knows there is none.
+
+An implementation MUST NOT add fields to a declared payload that the author did not name: the point of declaring the envelope is that adding a column does not change what leaves.
+:::
+
+A destination name in the model is a name the *application* owns. Whether two separate deployments sharing one broker can meet on it is a property of the implementation's isolation between tenants, not of the format — so an implementation that renames destinations per tenant MUST document how an author declares a destination that **is a contract with someone else**, or a departure quietly means less than it reads.
+
+Conversation-shaped transports — acknowledgement protocols, request-reply correlation, backoff policy — stay [beyond the boundary](/spec/#the-scope-boundary), as they are for an integration.
 
 ## rollups — denormalised parent totals
 
