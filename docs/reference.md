@@ -49,6 +49,7 @@ The quick lookup surface: one line and a minimal snippet per construct. For rule
 | [`inbound`](/spec/glue#inbound-webhooks) | a webhook that creates records |
 | [the event axis](/spec/glue#the-event-axis-lifecycle-and-process-step-events) | what a reacting glue entry binds to: an entity lifecycle event, or a process step reached / completed |
 | [`notifications`](/spec/glue#notifications) | email on an event of the axis |
+| [notify link placeholders](/spec/glue#links-back-to-the-application-recordurl-inboxurl-appurl) | `{recordUrl}` / `{inboxUrl}` / `{appUrl}` - a message that carries the way back into the application |
 | [`notify.forEach`](/spec/glue#one-message-per-related-row-foreach) | fan the block out over a related collection: one message per row |
 | [the notify block / `attach: print`](/spec/glue#the-notify-block-and-attach-print) | send a message about a record - with the record's own document attached - from a process step, a transition or a schedule |
 | [`schedules`](/spec/glue#schedules) | cron: notify or generate records per matching row |

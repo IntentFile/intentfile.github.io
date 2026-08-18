@@ -110,6 +110,31 @@ The **render language**: `language:` fixes the print-template language; `languag
 A recipient that resolves to no address is a **no-op** — recorded and skipped, so a record with nobody to notify never stalls a flow. A `transitions[].notify` can never fail its transition: the status flip is the contract and is already applied when the message is attempted, so a delivery failure is recorded and the transition still succeeds. A sending process step, whose whole purpose *is* the message, fails instead — so the platform's own retry applies.
 :::
 
+### Links back to the application: `{recordUrl}`, `{inboxUrl}`, `{appUrl}`
+
+A notification that cannot be acted on is a notification that gets ignored. "You have an approval waiting" is only useful if it carries the way back to the record, so `subject` and `body` accept three reserved link placeholders alongside the field ones:
+
+| Placeholder | Resolves to |
+| --- | --- |
+| `{recordUrl}` | the record the message is about, opened in the application |
+| `{inboxUrl}` | the recipient's task inbox |
+| `{appUrl}` | the application's external base URL — the origin only |
+
+```yaml
+    notify:
+      to: Approver.email
+      subject: "Approval needed: invoice {number}"
+      body: "Open it here: {recordUrl}\nEverything waiting on you: {inboxUrl}"
+```
+
+All three names are reserved at every notify call site, so an entity field of the same name never shadows them. `{recordUrl}` and `{inboxUrl}` are resolved to a complete address — **an intent never spells a route**. `{appUrl}` yields the origin alone; reach for it only for an address the other two cannot express, and append the rest as authored text.
+
+::: info Why the intent never writes the path
+The routes belong to whatever renders the application. An intent that named one would encode a layout it does not own — correct only until that layout changes, and silently wrong afterwards. `{recordUrl}` states the destination; the implementation states the address.
+:::
+
+Inside a [`forEach`](#one-message-per-related-row-foreach) fan-out `{recordUrl}` links the ROW, like every other bare path in the block — the row is what that message is about.
+
 ### One message per related row: `forEach`
 
 Some sends are per-row rather than per-record — a payroll run mails every payslip to its own employee. `forEach:` names a related entity and the block sends one message per row of it; every path (recipient, placeholders, `attach`) then resolves against the **row**.
