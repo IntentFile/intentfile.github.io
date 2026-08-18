@@ -20,6 +20,7 @@ The quick lookup surface: one line and a minimal snippet per construct. For rule
 | [`checks`](/spec/entities#checks-declarative-validations) | cross-field / cross-line validations |
 | [`checks: kind: guard`](/spec/entities#kind-guard-a-precondition-over-an-aggregate) | a precondition over an aggregate: block, mark for a task, or reject |
 | [`immutableWhen` / `immutable`](/spec/entities#immutablewhen-immutable-user-write-immutability) | reject user writes in a status / append-only |
+| [`lifecycle`](/spec/entities#lifecycle-the-legal-status-graph) | the whole legal status graph, enforced on every status write |
 | [`locksWithMaster`](/spec/entities#lockswithmaster-a-child-collection-that-outlives-its-masters-lock) | a child collection that stays writable while its master is locked |
 | [`hierarchy` / `leafOnly`](/spec/entities#hierarchy-leafonly-tree-entities) | tree entities, leaf-only references |
 | [calculated fields](/spec/entities#calculated-fields) | server + UI-evaluated expressions, date helpers, call-outs |
@@ -174,4 +175,5 @@ The following are parsed (or reserved) but not yet materialised by a generator; 
 - **Cross-model status names and stage scopes** — a nomenclature owned by another model is seeded there, so its stages and names cannot be resolved from the referencing file; such references are rejected with the numeric-id fallback named.
 - **`manyToMany`** — parsed but never materialised; the supported shape is the [explicit intermediate entity](/spec/relations#many-to-many).
 - A declarative state machine, and shadow audit-history entities (audit *columns* via `audit: true` ship today).
+- Event-driven document generation (produce a document on an event), and shadow audit-history entities (audit *columns* via `audit: true` ship today).
 - Arbitrary resolver-path task assignment beyond `assignee: personal`.

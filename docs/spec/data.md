@@ -60,7 +60,7 @@ The classification exists because a status **id is data, but its meaning is not*
 
 ### Status references — name, not number
 
-Everywhere the file names a status — a [transition's](/spec/glue#transitions-guarded-status-flips) `from` and `setStatus`, a relation's `init`, a status-setting step's `value`, [`abortOn`](/spec/processes#aborton-cancel-the-instance-on-a-terminal-status)'s `status`, a [check's](/spec/entities#checks-declarative-validations) `status` / `setStatus`, [`immutableWhen`](/spec/entities#immutablewhen-immutable-user-write-immutability), a [posting's](/spec/glue#postings-source-document-to-ledger) event guard, a [report's](/spec/presentation#reports) `filter` — the seeded **name** may be written instead of the id:
+Everywhere the file names a status — a [transition's](/spec/glue#transitions-guarded-status-flips) `from` and `setStatus`, a relation's `init`, a status-setting step's `value`, [`abortOn`](/spec/processes#aborton-cancel-the-instance-on-a-terminal-status)'s `status`, a [check's](/spec/entities#checks-declarative-validations) `status` / `setStatus`, [`immutableWhen`](/spec/entities#immutablewhen-immutable-user-write-immutability), a [`lifecycle`](/spec/entities#lifecycle-the-legal-status-graph) edge, a [posting's](/spec/glue#postings-source-document-to-ledger) event guard, a [report's](/spec/presentation#reports) `filter` — the seeded **name** may be written instead of the id:
 
 ```yaml
 transitions:

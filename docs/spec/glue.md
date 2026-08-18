@@ -415,6 +415,8 @@ transitions:
       body: "The invoice has been cancelled."
 ```
 
+When the entity declares a [`lifecycle`](/spec/entities#lifecycle-the-legal-status-graph), a transition is presentation over its edges: its `from`/`setStatus` pair must be one, and the graph — not the button — is what every other writer is held to as well.
+
 A transition may carry a [notify block](#the-notify-block-and-attach-print) — "on Void, tell the customer" — attempted after the flip has committed, and unable to fail it.
 
 ## postings — source document to ledger
