@@ -36,7 +36,8 @@ The quick lookup surface: one line and a minimal snippet per construct. For rule
 | [`scope`](/spec/presentation#lifecycle-scope) | which lifecycle rows an aggregating report counts |
 | [`widgets`](/spec/presentation#widgets-custom-dashboard-tiles) | custom KPI / embedded-page dashboard tiles |
 | [`notifications`](/spec/glue#notifications) | email on create / update / delete |
-| [`notify.forEach`](/spec/glue#one-message-per-related-row-foreach) | fan the block out over a related collection: one message per row |
+| [`notify.forEach`](/spec/glue#one-message-per-related-row-foreach) | fan the block out over a related collection: one message per row, every bare path resolved against the row |
+| [`attach: recordPrint`](/spec/glue#one-document-many-recipients-attach-recordprint) | in a fan-out: attach the ANCHOR record's document, rendered once, to every recipient (`{record.<field>}` addresses that record) |
 | [the notify block / `attach: print`](/spec/glue#the-notify-block-and-attach-print) | send a message about a record - with the record's own document attached - from a process step, a transition or a schedule |
 | [`schedules`](/spec/glue#schedules) | cron: notify or generate records per matching row |
 | [`integrations`](/spec/glue#integrations-outbound-http) | outbound HTTP on a data change |
