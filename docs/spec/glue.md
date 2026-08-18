@@ -1,6 +1,6 @@
 ---
 title: Declarative glue
-description: notifications, schedules, integrations, inbound webhooks, roll-ups, keyed aggregates, settlements, expansions, generates, transitions, postings and event-driven row posting - declared in the intent, generated as integration code, never hand-written.
+description: notifications, schedules, integrations, inbound arrivals (webhook, message, file), roll-ups, keyed aggregates, settlements, expansions, generates, transitions, postings and event-driven row posting - declared in the intent, generated as integration code, never hand-written.
 ---
 
 # Declarative glue
@@ -11,7 +11,7 @@ Beyond the model artefacts, the intent declares **glue**: the common integration
 
 Three axes:
 
-- **Event** — an entity `onCreate` / `onUpdate` / `onDelete` (with an optional `when:` guard), a schedule (`cron`), or an inbound webhook.
+- **Event** — an entity `onCreate` / `onUpdate` / `onDelete` (with an optional `when:` guard), a process step reached or completed, a schedule (`cron`), or an inbound arrival (a webhook, a message, a dropped file).
 - **Action** — notify (email), call out (HTTP), ingest into an entity, recompute a counter, start a process, create a document.
 - **Binding** — the **resolver-path grammar** (`customer.name`, `member.email`): one-hop relation walks off the triggering entity, validated at parse time.
 
@@ -23,14 +23,55 @@ Unlike the model generators, each glue activity is generated as an annotated **i
 An event-binding key is `event:`, never `on:` — YAML 1.1 resolves a bare `on` (also `off` / `yes` / `no`) to a boolean, so an `on:` key is silently swallowed. An action key is `do:`.
 :::
 
+## The event axis — lifecycle and process-step events
+
+A glue entry that reacts (`notifications`, `integrations`) declares **exactly one** `event:`, on one of two axes:
+
+| Axis | Shape | Fires when |
+| --- | --- | --- |
+| entity lifecycle | `{ onCreate\|onUpdate\|onDelete: <Entity> }` | a record is created / updated / deleted |
+| process step | `{ onStepReached\|onStepCompleted: { process, step } }` | a running process arrives at that step / has just finished it |
+
+```yaml
+processes:
+  - name: LoanApproval
+    trigger: { onCreate: Loan }
+    steps:
+      - { name: librarianReview, kind: userTask,    args: { assignee: librarian, next: activate } }
+      - { name: activate,        kind: serviceTask, args: { setField: status, value: ACTIVE } }
+
+notifications:
+  # "when the review task becomes available, tell the member's branch manager"
+  - name: reviewPending
+    event: { onStepReached: { process: LoanApproval, step: librarianReview } }
+    to: member.branch.managerEmail
+    subject: "Loan {id} is waiting for review"
+    body: "A librarian must approve it."
+
+integrations:
+  # "when the loan has been activated, tell the partner system"
+  - name: pushActivation
+    event: { onStepCompleted: { process: LoanApproval, step: activate } }
+    method: POST
+    url: "@config:PARTNER_URL"
+```
+
+A step event is an event **about the record the process runs on** — the process's `trigger` entity — so every action parameter resolves exactly as it does for a lifecycle event: the same recipient rule, the same `{placeholder}` interpolation, the same `when:` guard, the same forwarded body. No action needs to know which axis fired it.
+
+::: tip What is rejected at parse
+An undeclared process or step; a step that occupies no observable moment (only a `userTask` or a `serviceTask` does — not a decision, a wait or the end); a process with no `trigger`, since there is then no record the event could be about.
+:::
+
+`onStepReached` fires before the step's own work begins — the moment a task becomes available in the inbox. `onStepCompleted` fires after the step finished **and** after its writes are persisted (a task's edits, a `setField`), so an observer never sees a stale record. Any number of entries may observe the same moment: the record is published once. A branch that jumps back into an observed step re-enters it, so its `onStepReached` observers fire again.
+
 ## notifications
 
-Email on an entity lifecycle event.
+Email on an event of the axis above.
 
 ```yaml
 notifications:
   - name: orderUpdated
-    event: { onUpdate: Order }     # exactly one of onCreate / onUpdate / onDelete
+    event: { onUpdate: Order }     # one event of the event axis
     to: ops@example.com            # a literal, a direct field, or a one-hop relation.field
     subject: "Order {id} for {customer.name}, total {total}"
     body: "The order changed."
@@ -257,15 +298,28 @@ A bare word that names no field and no to-one relation of the record is a **lite
 Three value forms and four tokens is the cap, and the cap is the point: it expresses a frozen contract without the construct becoming a transformation language. A payload that needs more than this is an algorithm, and belongs in a hand-written handler — the honest hand-off.
 
 ## inbound — webhooks
+## inbound — arrivals from outside
 
-Another system tells us — a webhook that ingests a JSON payload into an entity.
+Another system tells us — a JSON record shaped like the entity, ingested into it. What differs between the three forms is only **where the record arrives**; the action is the same `create`.
 
 ```yaml
 inbound:
-  - { name: leadHook, path: /webhooks/lead, create: Lead }
+  # HTTP — an endpoint the other system posts to
+  - { name: leadHook,  path: /webhooks/lead, create: Lead }
+  # message — every record arriving on a queue (point-to-point) or a topic (broadcast)
+  - { name: leadQueue, source: { queue: leads.inbound }, create: Lead }
+  - { name: leadFeed,  source: { topic: crm.leads }, create: Lead }
+  # file — every file dropped into a folder, polled on the cron
+  - { name: leadDrop,  source: { folder: /data/inbox/leads, cron: "0 */5 * * * ?" }, create: Lead }
 ```
 
-Generates an endpoint that deserialises the request body into the entity and saves it. The v1 action is `create` (ingest).
+An entry declares **exactly one arrival**: a `path`, or a `source` naming exactly one of `queue` / `topic` / `folder` — both, neither, or two channels is an error. Whichever it is, the record is saved through the entity's **ordinary write path**, so validations, translations and the create event behave exactly as for any other write: the arrival is a transport, not a second data path.
+
+::: warning A folder is polled, not watched
+That is why a `folder` source requires its `cron` (and why a `cron` is an error on the others). A file holds one record or an array of them, is not read while it is still being written, and leaves the drop folder once read — ingested and rejected files kept apart — so nothing is ingested twice and a rejection stays inspectable.
+:::
+
+Conversation-shaped transports — acknowledgements, retries with backoff, certificates — stay [beyond the boundary](/spec/#the-scope-boundary): they have state and failure semantics no one-line declaration should pretend to carry.
 
 ## rollups — denormalised parent totals
 
