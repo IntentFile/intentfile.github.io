@@ -29,6 +29,7 @@ The quick lookup surface: one line and a minimal snippet per construct. For rule
 | [`uses`](/spec/relations#multi-model-applications) | reuse entities owned by another intent model |
 | [`related`](/spec/relations#related) | a read-only register of the records referencing this entity, on its own page |
 | [`processes`](/spec/processes#processes) | workflows: user tasks, decisions, waits, boundary timers |
+| [task assignment](/spec/processes#task-assignment) | route a user task to a role, the record owner, or a relation walk |
 | [`abortOn`](/spec/processes#aborton-cancel-the-instance-on-a-terminal-status) | cancel the running instance when the document reaches a terminal status |
 | [`function: Attachment` / `Snapshot`](/spec/entities#attachments-and-snapshots) | a Files panel / immutable versioned printed copies |
 | [`forms`](/spec/processes#forms) | task data-entry pages |
@@ -179,3 +180,4 @@ The following are parsed (or reserved) but not yet materialised by a generator; 
 - Event-driven document generation (produce a document on an event), and shadow audit-history entities (audit *columns* via `audit: true` ship today).
 - Event-driven document generation (produce a document on an event) and a declarative state machine.
 - Arbitrary resolver-path task assignment beyond `assignee: personal`.
+- Event-driven document generation (produce a document on an event), a declarative state machine, and shadow audit-history entities (audit *columns* via `audit: true` ship today).
