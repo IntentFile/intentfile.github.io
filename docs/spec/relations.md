@@ -137,6 +137,43 @@ Cross-model dropdowns read the **owner's already-generated model** at generation
 
 Because table names are [intent-prefixed](/spec/data#naming-and-tables), the projects share one schema without colliding.
 
+## related
+
+An entity page shows its own fields, and a document shows its composition items. An entity that is the **target** of associations has no way to show the records pointing at it — a project-month and its per-employee timesheet lines, a customer and its invoices, an account and its journal entries, a supplier and its purchase orders. `related:` declares that register, on the referenced entity:
+
+```yaml
+- name: ProjectTimesheet
+  related:
+    - entity: EmployeeTimesheet          # the referencing entity
+      model: employee-timesheets         # omit when it is declared in this model
+      via: projectTimesheet              # omit when it points here exactly once
+      label: Employee Timesheets         # omit for the pluralised entity name
+      show: [number, employee, totalHours, status]   # omit for the source's own list columns
+```
+
+The register renders on the referenced record's page, filtered to that record, and each row opens the referencing record's own page.
+
+It is a **window, not an owner**. The listed records belong to their own entity — their own lifecycle, their own pages, their own processes — so the register lists them and stops there. That is what separates it from a composition child, which *is* edited in place as a detail or document-items collection.
+
+**Why the referenced side declares it.** Generation is per model and leaf-first: the model being referenced is generated before, and generally knows nothing about, the models that reference it. A declaration on the referencing side could therefore never reach the page it wants to appear on.
+
+::: info Normative
+`entity` is required; a `model:` must be listed in `uses:`.
+
+`via:` is required when — and only when — the referencing entity reaches this one through more than one relation (an invoice naming the same company as both issuer and recipient). A generator MUST reject an ambiguous register rather than choose a relation for it.
+
+Every `show:` name MUST be a field or relation of the referencing entity.
+
+A generator MUST NOT offer create, update or delete affordances in a register — the referencing entity's own pages own those.
+
+A composition child MUST be rejected rather than listed: it is already rendered as an editable collection, and a second read-only rendering of the same rows is two panels over one collection.
+
+A generator MUST resolve a cross-model register against the owner model, and MUST fail loudly when that model cannot be found, rather than emitting a register with no columns.
+
+Field visibility rules (a role-scoped or otherwise withheld property) apply to a register's columns exactly as they apply to the referencing entity's own lists.
+:::
+
+
 ## See also
 
 - [Entities & fields](/spec/entities) — the fields and attributes a relation connects.
