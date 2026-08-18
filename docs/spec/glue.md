@@ -210,6 +210,45 @@ schedules:
       # the full notify block applies here: attach: print for the row's document, forEach to fan out
 ```
 
+### A `where` value relative to now — the staleness sweep
+
+The archetypal schedule is a **staleness sweep**: rows still provisioning after 30 minutes, quotations unanswered for a week, carts abandoned for an hour. Everything about such a sweep is a schedule already — except *how old is too old*, which needs a moment **relative** to now. Write the moment token with one signed ISO-8601 duration:
+
+```yaml
+schedules:
+  - name: stuckProvisioning
+    cron: "0 */5 * * * ?"
+    entity: TenantApplication
+    where:
+      - { field: provisioningStatus, op: eq, value: Provisioning }
+      - { field: changedAt,          op: lt, value: "CURRENT_TIMESTAMP-PT30M" }   # stuck for 30 minutes
+    notify: { to: ops@example.com, subject: "Application {id} has been provisioning for over 30 minutes" }
+
+  - name: unansweredQuotations
+    cron: "0 0 8 * * ?"
+    entity: Quotation
+    where:
+      - { field: status, op: eq, value: Sent }
+      - { field: sentOn, op: lt, value: "CURRENT_DATE-P7D" }                      # no answer for a week
+    notify: { to: owner.email, subject: "Quotation {id} has had no answer for a week" }
+```
+
+The comparison happens in the **queried field's own shape**: a `date` field takes `CURRENT_DATE` and a date-only amount (`P7D`, `P1W`, `P1M`, `P1Y`), a `timestamp` field takes `CURRENT_TIMESTAMP` (or `NOW`) and any amount (`PT30M`, `PT12H`, `P7D`, `P1M`). The forward form (`+`) is admitted symmetrically, for "falls due within the next week".
+
+::: info Normative
+The offset MUST resolve against the clock of **each firing**, never be baked into the generated artifact: a sweep generated on Monday must not still be asking about Monday.
+
+This is a moment vocabulary, not an expression language: **exactly one offset on one token**. No arithmetic between fields, no nesting, no further operators.
+
+Each of these MUST be an authoring error rather than a comparison that silently never matches — the very failure this construct removes: an offset the shape cannot carry (a time offset on a date), an offset that is not a single ISO-8601 duration (`-30M`, or a second offset), a moment compared with a non-temporal field, and a token of the other shape than the field's. The last applies to a **bare** token too: a timestamp moment handed to a date column is the same defect whether or not it carries an offset.
+
+A field the queried entity does not itself declare — a generated audit column, or a field of a source owned by another model — is exempt from the shape and temporality checks, since its properties are not resolvable at that point; the token's own shape then decides. An audit column is where a staleness sweep most often looks.
+
+Existing files are unaffected: a value without an offset keeps its meaning exactly.
+:::
+
+What this replaces is worth naming: a stored "deadline" column that every writer has to keep current — modelling the clock into the data — or a hand-written job that re-runs the query the format already describes and calls the notification it would already have generated.
+
 The `generate` variant creates a record through the **target's** own layer (so numbering, status init and calculated fields fire); the target may be cross-model via a `uses:` alias, and it may fan out `children`:
 
 ```yaml
