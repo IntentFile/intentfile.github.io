@@ -42,6 +42,7 @@ The quick lookup surface: one line and a minimal snippet per construct. For rule
 | [the notify block / `attach: print`](/spec/glue#the-notify-block-and-attach-print) | send a message about a record - with the record's own document attached - from a process step, a transition or a schedule |
 | [`schedules`](/spec/glue#schedules) | cron: notify or generate records per matching row |
 | [`integrations`](/spec/glue#integrations-outbound-http) | outbound HTTP on a data change |
+| [`integrations.payload`](/spec/glue#payload-the-declared-envelope) | the declared envelope a message carries, instead of the record as stored |
 | [`inbound`](/spec/glue#inbound-webhooks) | a webhook that creates records |
 | [`rollups`](/spec/glue#rollups-denormalised-parent-totals) | counts, sums, balance + status maintenance |
 | [`settlements`](/spec/glue#settlements-payment-allocation) | auto-allocation of payments across open invoices |
