@@ -501,7 +501,13 @@ expansions:
     count: periods
 ```
 
-A span change replaces the generated child set — never mix hand-entered rows into an expanded child.
+A span change is **reconciled** against the rows that exist rather than rebuilt: the periods that are missing are added, the rows whose period the span no longer covers are deleted, and the rows it still covers are kept — the same rows, with the same identifiers, and with whatever was edited on them. Never mix hand-entered rows into an expanded child: the expansion owns the set, so a row on a period the span does not cover is deleted as stale, and a second row on a covered period as a duplicate.
+
+::: info Normative
+A generator MUST apply a span change to the generated child set as a diff: it MUST create a row for each period the new span covers that has none, MUST delete each row whose period the new span does not cover, and MUST NOT delete or recreate a row whose period the new span still covers. Where `spread` is declared, it MUST recompute a kept row's share for the new row count. A reconciliation that resolves to the set already present MUST write nothing.
+
+The rule exists because the reconciliation's individual writes are not one atomic step: an implementation that deletes the whole set before recreating it destroys committed rows whenever the recreation is interrupted, whereas a diff leaves the set incomplete at worst — repaired by the next reconciliation, which resolves duplicate rows on one period down to one.
+:::
 
 ## generates — create-from
 
