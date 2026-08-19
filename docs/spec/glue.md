@@ -503,6 +503,18 @@ expansions:
 
 A span change replaces the generated child set — never mix hand-entered rows into an expanded child.
 
+::: info Normative
+Deleting the master removes the rows the expansion generated for it. Only rows selected by the
+expansion's own back-reference are removed, and each is removed through the child's layer, so the
+child's delete event fires for every row and anything reacting to a deleted child reacts exactly as
+it would for a hand-deleted one. The removal is idempotent.
+:::
+
+The generated rows are the expansion's, not the author's, and that is what settles the question:
+without this rule they would be the one part of a deleted record that survives it — still pointing at
+an id that no longer resolves, still counted by every roll-up, report and balance that counted them
+while the record existed.
+
 ## generates — create-from
 
 One-click "create a document from this document":
