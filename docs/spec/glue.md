@@ -485,6 +485,18 @@ settlements:
     payableStatuses: [3, 4, 6]
 ```
 
+A payment is rarely final the moment it is typed in: one booked for the wrong amount is corrected the next day, one entered from a bank statement is completed once the counter-party is identified. Allocation therefore follows the payment for its whole life, not only its arrival — and it is a recompute of what the payment has *left* to give, so the same change arriving twice settles the same invoices once.
+
+::: info Normative
+Allocation MUST run on the payment's creation and on every subsequent change to the payment record. Each run MUST allocate the payment's unallocated balance — its `pot` less every amount already allocated to it through the `junction` — rather than allocate the `pot` again: a positive balance is spread over the payer's open invoices in `order`, a zero balance MUST leave the allocation untouched, and a negative balance — the payment now covers less than it is allocated to — MUST release the excess so the allocations sum to the payment again.
+
+The excess MUST be released from the most recently created allocations first, reducing rather than removing the last allocation it touches when only part of it is excess, so the invoices settled earliest stay settled. Releases are ordinary junction writes, so the invoice `paid` roll-up follows them down as it followed the allocation up.
+
+Because every run recomputes, a re-delivered or replayed change MUST leave the allocation unchanged.
+:::
+
+Allocation is eventually consistent, not transactionally exact, under concurrency — like every other recompute-on-event construct here.
+
 ## expansions — child rows from a date span
 
 Generate one child row per day / week / month of a span on the parent:
