@@ -52,7 +52,7 @@ A seed row of a **status nomenclature** (the target of a `function: EntityStatus
 | `cancelled` | Withdrawn before it ever became live. |
 | `void` | Deliberately retired while keeping its number — out of circulation by design. |
 
-The classification exists because a status **id is data, but its meaning is not**: without it, "the rows that count" can only be expressed as a predicate over positional ids, repeated in every report and guard that needs it. With it, the meaning is declared once, where the nomenclature is defined, and consumers resolve it — chiefly a [report's `scope`](/spec/presentation#lifecycle-scope).
+The classification exists because a status **id is data, but its meaning is not**: without it, "the rows that count" can only be expressed as a predicate over positional ids, repeated in every report and guard that needs it. With it, the meaning is declared once, where the nomenclature is defined, and consumers resolve it: a [report's `scope`](/spec/presentation#lifecycle-scope) decides what an aggregate counts, and an [event-driven create-from](/spec/glue#a-retired-target-stops-blocking-its-source) decides whether an already generated document still blocks its source.
 
 ::: info Normative
 `stage` is **metadata, not data**: it MUST NOT be emitted as a column of the seeded table. A row carrying `stage` MUST also carry the entity's primary key (the stage classifies that id). A value outside the vocabulary is an authoring error. An entity that declares its own `stage` property cannot be classified this way — the collision MUST be reported rather than resolved by guessing.

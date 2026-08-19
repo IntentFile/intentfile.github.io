@@ -547,6 +547,29 @@ Exactly one trigger must be declared: `onTransition` (a status write — a `when
 An event-driven create-from is **at-most-once**: `map` must copy the source's primary key onto a to-one relation of the target back to the source, and the generated creation must return the already existing target instead of creating a second one. A file declaring an `event` without that back-reference must be rejected — a redelivery would otherwise mint a duplicate document. A create-from with no `event` carries no such guard: producing several targets from one source by clicking twice is a legitimate manual act.
 :::
 
+#### A retired target stops blocking its source
+
+"At most once" is a claim about targets that still count, not about rows that exist. A voided document keeps existing and keeps back-referencing its source, so a guard that asks existence alone spends the source's one shot at the first creation and never gives it back — and "void and reissue", a document retired **while keeping its number** and a fresh one raised, becomes inexpressible.
+
+Nothing on the create-from says which statuses retire a document: that is what the target's [`stage` classification](/spec/data#stage-what-a-status-means-to-the-lifecycle) already means, and the guard reads it.
+
+```yaml
+seeds:
+  - name: declaration-states
+    entity: DeclarationState
+    rows:
+      - { id: 1, name: DRAFT,     stage: draft }
+      - { id: 2, name: FILED,     stage: live }
+      - { id: 3, name: CANCELLED, stage: cancelled }   # a target in either of these
+      - { id: 4, name: VOIDED,    stage: void }        # no longer blocks its source
+```
+
+::: info Normative
+The at-most-once guard must be satisfied only by an existing target that is **not retired** — one whose `function: EntityStatus` value is a seed row classified `cancelled` or `void`. A retired target must be left as it is: superseding creates a new record, and never edits, deletes or re-points the retired one. When the target carries no status relation, or its nomenclature carries no `stage` classification, the guard remains satisfied by existence alone, and a generator must report the unclassified case — that is where the guard reads as state-aware and is not. A file that adopts no classification regenerates unchanged.
+:::
+
+A `draft` or `live` target still blocks, so idempotence under redelivery is untouched: a redelivered event finds the document it created. Note what this is not: a cardinality. Removing the guard would also mint a document on every later qualifying event; the question here is not how many targets a source may have, but which existing one still counts.
+
 ::: info Normative
 Declaring an `event` drops the button unless `button: true` is declared as well; `button: false` without an `event` must be rejected (the action would have no trigger at all). When both triggers are declared they must share one creation path, and therefore one at-most-once guard.
 :::
