@@ -51,6 +51,7 @@ The quick lookup surface: one line and a minimal snippet per construct. For rule
 | [`schedules`](/spec/glue#schedules) | cron: notify or generate records per matching row; `where` values may be moments relative to the firing |
 | [`integrations`](/spec/glue#integrations-outbound-http) | outbound HTTP on a data change |
 | [`inbound`](/spec/glue#inbound-arrivals-from-outside) | records arriving from outside: a webhook, a queue/topic message, a dropped file |
+| [`inbound.accept` / `inbound.map`](/spec/glue#accept-and-map-when-the-payload-is-an-envelope) | read an arrival as an envelope: gate on its type and version, map its keys onto the record, resolve a business key to a relation |
 | [`outbound`](/spec/glue#outbound-departures-on-a-queue-or-a-topic) | a record emitted on a queue or a topic when an event fires |
 | [`rollups`](/spec/glue#rollups-denormalised-parent-totals) | counts, sums, balance + status maintenance |
 | [`settlements`](/spec/glue#settlements-payment-allocation) | auto-allocation of payments across open invoices |
