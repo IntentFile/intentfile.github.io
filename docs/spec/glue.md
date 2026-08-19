@@ -436,9 +436,11 @@ rollups:
       status: Status, statusWhenFull: 7, statusWhenPartial: 6 }
 ```
 
-A count roll-up keeps a counter on a parent current on the child's create / delete. With `op: sum` the roll-up keeps `field` equal to the sum of the children's `of` field, can maintain a `balance` (= `capacity - sum`), and can flip a `status` relation to `statusWhenFull` / `statusWhenPartial`. Sum roll-ups **compose transitively** across a multi-level composition (a leaf edit updates the mid total, then the top total); recomputation stops when values stop changing.
+A count roll-up keeps a counter on a parent current as its children change. With `op: sum` the roll-up keeps `field` equal to the sum of the children's `of` field, can maintain a `balance` (= `capacity - sum`), and can flip a `status` relation to `statusWhenFull` / `statusWhenPartial`. Sum roll-ups **compose transitively** across a multi-level composition (a leaf edit updates the mid total, then the top total); recomputation stops when values stop changing.
 
 Roll-ups are recompute-on-event (self-healing), so they are **eventually consistent, not transactionally exact** under heavy concurrency.
+
+Every roll-up recomputes on the child's **create, update and delete**, whatever its `op` reduces the children to - the event set belongs to the construct, not to the aggregation. The update pass is what a plain counter needs most: a child changes parents by an ordinary edit of its own parent relation, so an edit that re-parents a child recomputes the parent it moved *to*. The parent it moved *away from* is not named by that event; a generator that publishes a distinct event for a moved key should recompute it too, and otherwise it converges the next time one of its own children changes.
 
 The parent may be owned by **another model**. When the roll-up's `via` relation is a cross-model reference, the child stays local - it owns the event that drives the recompute - while the parent's coordinates come from the owner's model, so a time-tracking model can maintain an `actualHours` total on a project the projects model owns. The referenced model must be declared in `uses`, and the parent field is validated against the owner's model at generation time; an unresolvable roll-up is reported rather than dropped silently. The `capacity` / `balance` / `status` variants stay local-only, since they read the parent's own limit and status values.
 
