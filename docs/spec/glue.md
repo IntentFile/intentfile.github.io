@@ -440,6 +440,8 @@ A count roll-up keeps a counter on a parent current on the child's create / dele
 
 Roll-ups are recompute-on-event (self-healing), so they are **eventually consistent, not transactionally exact** under heavy concurrency.
 
+Moving a child to another parent - an edit of its `via` relation and nothing else - leaves BOTH parents right: the parent that received the child recomputes, and so does the parent it left, which does not go on counting a child that is no longer its own. That holds however the relation was written, including by a process step's field setter or a task form, which write one column and raise no ordinary change event.
+
 The parent may be owned by **another model**. When the roll-up's `via` relation is a cross-model reference, the child stays local - it owns the event that drives the recompute - while the parent's coordinates come from the owner's model, so a time-tracking model can maintain an `actualHours` total on a project the projects model owns. The referenced model must be declared in `uses`, and the parent field is validated against the owner's model at generation time; an unresolvable roll-up is reported rather than dropped silently. The `capacity` / `balance` / `status` variants stay local-only, since they read the parent's own limit and status values.
 
 ## aggregates — keyed cross-entity totals
@@ -463,7 +465,7 @@ Every name in `by` must be a to-one relation of both the source and the target. 
 
 Aggregates are recompute-on-event, so like roll-ups they are **eventually consistent, not transactionally exact**. The recompute writes only the aggregate column, so it never reverts a concurrent edit to another column of the target row. An aggregate of a `sensitive` field is itself sensitive wherever its target carries a personal surface - hiding a value and publishing its total would be a distinction without a difference.
 
-Changing a grouping key MOVES a source row between tuples, and both sides are repaired: the tuple it joined is recomputed from the row's own change, and the tuple it left is recomputed too, so no tuple keeps a contribution from a row that is no longer in it. The previous keys cannot be recovered after the write, so a conforming generator observes them before it. A tuple whose last contributing row leaves keeps its target row with a zero total rather than disappearing.
+Changing a grouping key MOVES a source row between tuples, and both sides are repaired: the tuple it joined is recomputed, and so is the tuple it left, so no tuple keeps a contribution from a row that is no longer in it - whichever write moved the key, a form submit or a targeted one that raises no change event. The previous keys cannot be recovered after the write, so a conforming generator observes them before it. A tuple whose last contributing row leaves keeps its target row with a zero total rather than disappearing.
 
 ## settlements — payment allocation
 
