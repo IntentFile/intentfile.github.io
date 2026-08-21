@@ -553,6 +553,35 @@ Declaring an `event` drops the button unless `button: true` is declared as well;
 
 `sourceStatus:` composes unchanged: the flip happens once the target exists, and cannot re-trigger the create-from because the guard has already claimed the source.
 
+#### A retired target returns its source
+
+A target that has been retired — its status classified `cancelled` or `void` — stops satisfying the at-most-once guard, so the source may produce a replacement. That is what makes "void and reissue" expressible. But where the rule also declares a completion hook, the freed slot cannot be refilled by an event.
+
+The hook exists precisely to move the source OFF the status its own trigger qualifies on. So once it has run, the source stands at the post-generation status, a lifecycle graph declares no edge back, and no qualifying transition is ever published again. Voiding the target frees the slot and nothing can knock. Where a button is also declared, a person can click it; an event-only rule — the shape the event axis exists for — has no reissue path at all, and nothing says so.
+
+`sourceStatusOnRetire` is the hook's **inverse**: where the source returns when a target this rule produced is retired.
+
+```yaml
+generates:
+  - name: invoice-from-proforma
+    from: Proforma
+    to: Invoice
+    event: { onTransition: Proforma, when: "Status == APPROVED" }
+    map: { Proforma: id }
+    sourceStatus: INVOICED           # forward: the proforma is done once the invoice exists
+    sourceStatusOnRetire: APPROVED   # back: voiding the invoice returns it — and the trigger re-fires
+```
+
+Retiring the invoice returns the proforma to APPROVED. That is a real transition of the proforma, announced on the source's transition channel like any other, so the ordinary trigger re-fires, the guard steps over the retired invoice, and the replacement is minted. The reissue is the **ordinary path**, not a second creation route with semantics of its own — and nothing new declares what "retired" means: it is the same classification the guard reads, asked from the other end.
+
+::: info Normative
+`sourceStatusOnRetire` requires `sourceStatus`, of which it is the inverse, and must name a different status — a write that leaves the status where it stands is not a transition and announces nothing. It must be rejected on an appending rule, which keeps no guard and therefore frees no slot, and wherever the target's retirement cannot be recognised where the rule is declared: a target with no status relation, a nomenclature with no `cancelled` or `void` classification, or a target belonging to another model. When a target of this rule becomes retired and the source still stands at `sourceStatus`, the source must be moved to `sourceStatusOnRetire` and that move announced on the source's transition channel; only the status may be written, and the retired target must be left exactly as it is. When the source stands anywhere else, nothing happens. The move is a transition, so where the source declares a lifecycle the edge from `sourceStatus` to it must be declared. A file that declares no `sourceStatusOnRetire` regenerates unchanged.
+:::
+
+The condition "the source still stands at `sourceStatus`" is the whole guard, which is what makes the reopen idempotent without a marker of its own: a redelivered retirement finds the source already returned, and a source that has travelled further down its own lifecycle is not dragged back.
+
+Whether a replacement follows immediately is decided by the trigger's own `when:`, not by the reopen — which only publishes the transition. Return the source to the status the trigger qualifies on and the reissue is immediate; return it to an earlier one (a draft, for correction) and it waits for a person to move it forward again.
+
 Prefer this over [`posts`](#posts-derived-rows-on-an-event) when the result is a document with line items — `posts` emits flat mapped rows and cannot reference the freshly created header. Prefer it over a button plus a [`wait`](/spec/processes#wait-park-the-process-on-a-data-event) step when the step is really waiting for a person to remember to click: an unclicked record parks its process instance indefinitely.
 
 ## resolves — fill a relation from a register valid on a date
