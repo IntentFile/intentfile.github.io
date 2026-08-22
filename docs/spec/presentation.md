@@ -249,6 +249,41 @@ The print template is written **create-if-absent** and never regenerated over. A
 
 To add a language, add a file under a sibling language folder (`.../Print/bg/standard.print`); the print action asks which to use when several exist.
 
+### Naming the rendered file - `fileName`
+
+A document is rendered to a file in two places - the versioned copy a [`function: Snapshot`](/spec/entities#attachments-and-snapshots) child mints, and the copy a [notify block](/spec/glue#the-notify-block-and-attach-print) attaches. Both accept a `fileName` pattern: literal text and `{token}` interpolations over the record being rendered.
+
+```yaml
+entities:
+  - name: SalesInvoiceCopy
+    function: Snapshot
+    fileName: "{number}_{date:yyyyMMdd}_{company.shortName|company.name}"
+    relations:
+      - { name: salesInvoice, kind: manyToOne, to: SalesInvoice, composition: true, required: true }
+```
+
+| Token | Renders |
+| --- | --- |
+| `{field}` | a field of the rendered record |
+| `{relation.field}` | a field of a one-hop to-one relation of it |
+| `{field:pattern}` | a date or timestamp field in the given date-format pattern |
+| `{A\|B}` | the first non-blank of the listed operands, left to right |
+| `{Version}` | the copy's version (a snapshot only) |
+
+Paths use the authored field and relation names - the same vocabulary a notify `subject` interpolates. A snapshot's pattern resolves against its **document master** (the copy row itself holds only the stored file's coordinates); a notify block's against the record that block renders.
+
+The name is the only thing a file carries once it leaves the application: an archive is browsed and searched by it, an attachment arrives in a mailbox with no application around it, and a hand-off to an accountant or an auditor is a folder plus a naming convention agreed in advance. A folder of `Order 42 v1.pdf`, `Order 43 v1.pdf` is unusable at the exact moment it matters.
+
+::: info Normative
+An interpolated value is sanitized before it enters the name: trimmed, internal whitespace collapsed to a single separator, and characters the storage or transport cannot carry removed. Non-ASCII characters are preserved - whether a name is transliterated is an application's data convention, not the format's. Literal text between tokens is emitted verbatim: the author owns the separators.
+
+A token whose value is blank renders empty. A token naming a field or relation the entity does not have is rejected at authoring time, not rendered empty - a silently dropped token produces exactly the indistinguishable names this construct removes. Also rejected: a pattern that interpolates nothing, unbalanced or nested braces, a date format on a field that is not a date or timestamp, a format the formatter does not accept, and a multi-hop path.
+
+`{Version}` is rejected where no version exists; a snapshot pattern that does not place it has the version appended, because two versions of one copy must never share a name. On a notify block `fileName` requires an `attach`, and where the attached document is rendered once for a whole fan-out only fields of that record are readable.
+
+Absent a pattern, an implementation supplies a default - and the same default for both renders; a document's own number is used where it declares one.
+:::
+
 ## See also
 
 - [Entities & fields](/spec/entities) — `function`, `label` and the status relation these surfaces read.
