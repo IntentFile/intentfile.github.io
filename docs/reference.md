@@ -34,6 +34,7 @@ The quick lookup surface: one line and a minimal snippet per construct. For rule
 | [task assignment](/spec/processes#task-assignment) | route a user task to a role, the record owner, or a relation walk |
 | [`abortOn`](/spec/processes#aborton-cancel-the-instance-on-a-terminal-status) | cancel the running instance when the document reaches a terminal status |
 | [`function: Attachment` / `Snapshot`](/spec/entities#attachments-and-snapshots) | a Files panel / immutable versioned printed copies |
+| [a print placeholder's alternative paths](/spec/presentation#printable-documents) | several paths in one placeholder - the first non-blank one is rendered |
 | [`forms`](/spec/processes#forms) | task data-entry pages |
 | [`actions`](/spec/processes#actions-custom-buttons) | developer-defined buttons opening custom pages |
 | [`view`](/spec/presentation#view-calendar-range-slots) | an additional calendar / range page, or a slot-booking page |
