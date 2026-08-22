@@ -220,6 +220,18 @@ The template is a tree of layout tags (`page`, `header` / `footer`, `section` / 
 {{<Property>}}                     a line-item field (inside a table bound to the items)
 ```
 
+A placeholder may list several paths separated by `|`, and the **first one resolving to a non-blank value** is rendered, left to right:
+
+```text
+<field label="Customer">{{document.Customer.NameLocal|document.Customer.Name}}</field>
+```
+
+This is the fallback an optional twin field needs. A partner record carries a locally registered name beside its canonical one - filled for some partners and not for others - and a template that had to name a single field printed a hole in the document for every record with the other one filled.
+
+::: info Normative
+Every operand resolves by the same rules as a single path, including row-scope resolution inside a table. A value counts as blank when it is null, missing, or whitespace-only. The **last** operand is rendered whatever it holds, so a single path is the one-operand case of the rule and a placeholder whose operands are all blank renders empty - exactly as an unresolved single path does; an existing template is byte-identical until it adopts the syntax. Any number of operands is allowed, and no other syntax is introduced: an operand is a path, never a literal or an expression.
+:::
+
 A `table` (or a row-expanding `for`) can **filter** the collection it renders — a declarative value match, never an expression: `filter="<path>"` keeps the rows whose path (resolved per row) is truthy, and adding `match="A | B"` keeps only the rows whose value equals one of the `|`-separated literals. The same `match` on an `if` compares its resolved `source` against the listed values instead of testing truthiness. One bound collection can this way render into several purpose-grouped tables — the two-column payslip (earnings left, deductions right), a journal entry's debit and credit sides, a VAT summary per rate:
 
 ```text
