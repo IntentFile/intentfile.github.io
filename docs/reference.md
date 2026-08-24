@@ -23,6 +23,7 @@ The quick lookup surface: one line and a minimal snippet per construct. For rule
 | [`checks: kind: guard`](/spec/entities#kind-guard-a-precondition-over-an-aggregate) | a precondition over an aggregate: block, mark for a task, or reject |
 | [`immutableWhen` / `immutable`](/spec/entities#immutablewhen-immutable-user-write-immutability) | reject user writes in a status / append-only |
 | [`lifecycle`](/spec/entities#lifecycle-the-legal-status-graph) | the whole legal status graph, enforced on every status write |
+| [`phases`](/spec/entities#phases-a-moment-an-enrichment-announces) | the enrichment moments an entity announces, so a silent write has a channel a consumer can bind |
 | [`locksWithMaster`](/spec/entities#lockswithmaster-a-child-collection-that-outlives-its-masters-lock) | a child collection that stays writable while its master is locked |
 | [`history`](/spec/entities#history-the-change-trail) | a shadow, append-only trail of every write: property, old and new value, who, when, user or system |
 | [`hierarchy` / `leafOnly`](/spec/entities#hierarchy-leafonly-tree-entities) | tree entities, leaf-only references |
@@ -44,7 +45,7 @@ The quick lookup surface: one line and a minimal snippet per construct. For rule
 | [`notify.forEach`](/spec/glue#one-message-per-related-row-foreach) | fan the block out over a related collection: one message per row, every bare path resolved against the row |
 | [`attach: recordPrint`](/spec/glue#one-document-many-recipients-attach-recordprint) | in a fan-out: attach the ANCHOR record's document, rendered once, to every recipient (`{record.<field>}` addresses that record) |
 | [`payload`](/spec/glue#payload-the-declared-envelope) | the declared envelope an outward-facing message carries (integrations and outbound alike), instead of the record as stored |
-| [the event axis](/spec/glue#the-event-axis-lifecycle-and-process-step-events) | what a reacting glue entry binds to: an entity lifecycle event, or a process step reached / completed |
+| [the event axis](/spec/glue#the-event-axis-lifecycle-and-process-step-events) | what a reacting glue entry binds to: an entity lifecycle event, a declared enrichment phase, or a process step reached / completed |
 | [`notifications`](/spec/glue#notifications) | email on an event of the axis |
 | [notify link placeholders](/spec/glue#links-back-to-the-application-recordurl-inboxurl-appurl) | `{recordUrl}` / `{inboxUrl}` / `{appUrl}` - a message that carries the way back into the application |
 | [the notify block / `attach: print`](/spec/glue#the-notify-block-and-attach-print) | send a message about a record - with the record's own document attached - from a process step, a transition or a schedule |
@@ -59,7 +60,7 @@ The quick lookup surface: one line and a minimal snippet per construct. For rule
 | [`generates.event`](/spec/glue#event-driven-creation-event) | mint the document on a source event instead of a click, at most once |
 | [`resolves`](/spec/glue#resolves-fill-a-relation-from-a-register-valid-on-a-date) | fill a to-one from the register row valid on the record's date |
 | [`transitions`](/spec/glue#transitions-guarded-status-flips) | guarded on-demand status flips (void / cancel / reopen) |
-| [`postings`](/spec/glue#postings-source-document-to-ledger) | declarative source-document to balanced-document posting - on a status transition, or on create for a lifecycle-less source |
+| [`postings`](/spec/glue#postings-source-document-to-ledger) | declarative source-document to balanced-document posting - on a status transition, on create for a lifecycle-less source, or on a declared enrichment phase |
 | [`aggregates`](/spec/glue#aggregates-keyed-cross-entity-totals) | keyed cross-entity totals materialised into their own entity |
 | [`posts`](/spec/glue#posts-derived-rows-on-an-event) | derived ledger rows emitted idempotently on an event |
 | [`personal` / `partner`](/spec/surfaces#personal-and-partner-surfaces) | per-user and per-partner row-scoped surfaces |

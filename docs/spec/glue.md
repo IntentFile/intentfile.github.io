@@ -25,11 +25,12 @@ An event-binding key is `event:`, never `on:` — YAML 1.1 resolves a bare `on` 
 
 ## The event axis — lifecycle and process-step events
 
-A glue entry that reacts (`notifications`, `integrations`) declares **exactly one** `event:`, on one of two axes:
+A glue entry that reacts (`notifications`, `integrations`) declares **exactly one** `event:`, on one of three axes:
 
 | Axis | Shape | Fires when |
 | --- | --- | --- |
 | entity lifecycle | `{ onCreate\|onUpdate\|onDelete: <Entity> }` | a record is created / updated / deleted |
+| entity enrichment | `{ onPhase: <Entity>, phase: <name> }` | a listener announces a declared [phase](/spec/entities#phases-a-moment-an-enrichment-announces) of the record |
 | process step | `{ onStepReached\|onStepCompleted: { process, step } }` | a running process arrives at that step / has just finished it |
 
 ```yaml
