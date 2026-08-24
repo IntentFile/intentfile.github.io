@@ -38,7 +38,7 @@ The quick lookup surface: one line and a minimal snippet per construct. For rule
 | [`actions`](/spec/processes#actions-custom-buttons) | developer-defined buttons opening custom pages |
 | [`view`](/spec/presentation#view-calendar-range-slots) | an additional calendar / range page, or a slot-booking page |
 | [`documentItemsLayout: chat`](/spec/presentation#documentitemslayout-chat-conversation-threads) | render a document's items as a chat thread |
-| [`reports`](/spec/presentation#reports) | aggregations, charts, dashboard KPI tiles, balance reports |
+| [`reports`](/spec/presentation#reports) | aggregations, charts, dashboard KPI tiles, balance reports, user-set parameters |
 | [`scope`](/spec/presentation#lifecycle-scope) | which lifecycle rows an aggregating report counts |
 | [`widgets`](/spec/presentation#widgets-custom-dashboard-tiles) | custom KPI / embedded-page dashboard tiles |
 | [`notify.forEach`](/spec/glue#one-message-per-related-row-foreach) | fan the block out over a related collection: one message per row, every bare path resolved against the row |
@@ -141,6 +141,9 @@ reports:
     measures: ["count(*)", "sum(total)"]
     filter: "total > 0"
     scope: live                    # all | draft | live | cancelled | void
+    parameters:                    # user-set inputs bound into the WHERE
+      - { name: fromDate, target: orderDate, op: ge }
+      - { name: minTotal, target: total, op: ge, initial: "0" }
     chart: bar
     widget: { value: "sum(total)", at: { "month(orderDate)": now }, label: Revenue (this month) }
 ```
