@@ -63,6 +63,39 @@ With no `scope`, a report counts every row **except** when all of the following 
 A report that aggregates over a lifecycle-carrying source while declaring no `scope`, filtering on no status, and resolving no stage classification is the case this construct exists to eliminate: a generator MUST report it as a diagnostic naming the report and its status relation. Emitting the unrestricted aggregation silently is non-conforming.
 :::
 
+### Parameters
+
+A report is usually read for a period, a threshold or a name the reader chooses. `filter` cannot express that — it is fixed when the report is generated — so `parameters` declares the report's own inputs:
+
+```yaml
+reports:
+  - name: Revenue
+    source: Invoice
+    dimensions: [date, customer.name]
+    measures: ["sum(total)"]
+    parameters:
+      - { name: fromDate, target: date, op: ge }                 # a From picker
+      - { name: toDate, target: date, op: le }                   # a To picker
+      - { name: minTotal, target: total, op: ge, initial: "0" }  # an amount threshold
+      - { name: customer, target: customer.name, op: like }      # a name search
+```
+
+Each entry becomes an input rendered above the report, whose value is bound into the report's `WHERE`:
+
+| key | meaning |
+| --- | ------- |
+| `name` | the input's label source and the name its value is sent under |
+| `target` | the field it filters: a field of the source, or a one-hop `relation.field` path — joined exactly as a dimension is, so a report may be filtered by a column it does not display |
+| `op` | `ge`, `le`, `eq` or `like`; `like` matches anywhere in the value |
+| `type` | optional `date` / `timestamp` / `number` / `string` — the target field already types the parameter, so this is a declaration checked against it, never a conversion |
+| `initial` | the value bound when the input is left empty — what the report shows before the reader touches it |
+
+A parameter is bound on **every** read, so `initial` is what makes the untouched report the unfiltered one. Two comparisons have a neutral "any value" default and therefore need no `initial` — a date `ge`/`le` bound (widened to all time) and a `like` search (the empty pattern, which matches every value). An `eq` selector and a numeric bound have none: the declaration must say what the report opens with.
+
+A row holding no value in the target column is still in the report while the input is empty; once a value is set, that row is outside the filter. A `timestamp` target is compared as a date, so a `le` bound includes the whole day chosen.
+
+The target is a **field**: a relation itself is not one (name a field of it), and boolean and long-text fields are not parameterizable. A balance report declares its own `fromDate`/`toDate` window and may add further parameters, but not redeclare those two.
+
 ### Chart
 
 `chart:` renders the report page as a chart instead of a table (the page keeps a table / chart toggle, so filters, export and print still work). A chart wants exactly one dimension and one or more measures — the dimension labels the axis and each measure becomes a series:
