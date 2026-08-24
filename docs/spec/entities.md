@@ -420,6 +420,45 @@ With a lifecycle declared, `transitions` become **presentation over its edges**:
 
 It composes with the [`stage:` classification](/spec/data#stage-what-a-status-means-to-the-lifecycle): a stage says what a status *means* (draft, live, cancelled, void) and scopes reports by it; the lifecycle says how a record may *move* between statuses.
 
+## phases — a moment an enrichment announces
+
+Not everything a record needs is known when its row is inserted. An inventory ledger values stock at a moving average: the movement row is created when a goods document posts, and a listener on that create event reads the pool, computes the movement's cost, and writes it back.
+
+That write-back must not raise an update event. An enrichment is not a user's edit, and publishing it as one re-fires every consumer that reacts to an edit. So the enrichment is silent — and a declarative consumer of the enriched value has no moment to bind. Bound to the create event it runs as a **sibling** of the enriching listener, with nothing ordering the two: it may read the row before the value is there and produce a perfectly balanced journal entry for a null amount, with the parse, the generation and the deployment all green.
+
+`phases:` declares the moments an entity announces, giving that silent write a channel of its own:
+
+```yaml
+entities:
+  - name: StockMovement
+    phases: [costed]
+    fields:
+      - { name: id,        type: integer, primaryKey: true, generated: true }
+      - { name: costValue, type: decimal, precision: 18, scale: 2 }
+```
+
+For each declared phase the generated data-access layer exposes an operation that **applies the enriched values and announces the phase in one write**. The enriching listener calls it instead of a plain silent write, so a consumer can never observe the announcement without the values, nor the values without an announcement.
+
+A glue consumer then binds the phase instead of the insert:
+
+```yaml
+postings:
+  - name: cogsPosting
+    event: { onPhase: StockMovement, phase: costed }
+    creates: JournalEntry
+    backReference: StockMovement
+    rule: { entity: PostingRule, match: { documentType: "Goods Issue" } }
+    items:
+      - { Account: rule(costOfSalesAccount), debit: "CostValue" }
+      - { Account: rule(inventoryAccount),   credit: "CostValue" }
+```
+
+A phase-bound consumer receives the record exactly as a lifecycle-bound one does: the same payload, the same recipient paths, the same placeholders, the same optional `when:` guard. Only the moment differs — and the guard is optional here, because a phase already names one moment where a status transition is any status write.
+
+**Rules.** A phase name is a lower-camel identifier, unique within its entity, and may not be named after a channel the platform itself publishes (an update, a delete, a status transition) — announcing one would re-fire that channel's consumers. An `onPhase` binding must name a declared phase of the bound entity; an undeclared one is rejected, since it would bind a channel nothing publishes to and the consumer would simply never fire. A `phase:` key on a binding of another axis is rejected rather than ignored. When the bound entity is owned by another model its phases are declared there, so the name is not resolvable from the consumer's side — the same limit a cross-model status nomenclature has.
+
+Declare a phase only for what a listener adds **after** the insert. A calculated expression, a calculated action, a stamped document number and a document's own totals are already in the row the create event carries.
+
 ## locksWithMaster — a child collection that outlives its master's lock
 
 An entity's immutability covers that entity **and the collections composed into it**. For some children that is wrong — a master that freezes its content says nothing about a collection recording what happens to the document afterwards:
