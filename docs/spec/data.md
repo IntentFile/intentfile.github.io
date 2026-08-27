@@ -102,6 +102,22 @@ A [report](/spec/presentation#reports) reads the same data, so it reads it in th
 Every read of a translatable property of a `multilingual: true` entity is served in the caller's requested language, and a report column bound to such a property is such a read. What a report **matches** is unaffected: a report's `filter:`, its [`scope`](/spec/presentation#lifecycle-scope) and any condition applied to it are evaluated against the stored, untranslated values — so translating content can never change which rows a report returns, only how they read. A property with no translation for the requested language, and a caller who requested none, both read the stored value.
 :::
 
+#### The language of a render
+
+A **render** — the interactive print, a versioned copy, a document or report attached to a message — has a language of its own: chosen in the print action, or declared by `language:` / `languageFrom:`. That language selects the [template](/spec/presentation#printable-documents), and it is also the language the render's data is read in. A document names its language in its heading and must not contradict it in its body: a Bulgarian invoice reading `ФАКТУРА` over a payment method reading `Bank transfer` is one document in two languages.
+
+The distinction matters because a render is not a read by a caller. The interactive print has one, but the reader's browsing language is not the language they just chose to print in; a copy minted by a workflow, or a document attached by a scheduled or event-driven message, has no caller at all. Those last two are the renders nobody re-reads before they leave — the archived copy an audit is answered from, and the copy the counterparty receives with no application around it.
+
+::: info Normative
+The language a render is produced in is the requested language for every read performed to produce it, including reads made where there is no caller to ask. A render never resolves its data in a language other than the one its template was selected in.
+
+The per-property fallback is unchanged: a property with no translation in the render's language reads its stored value, so a render language the model provides no translations for produces a document in the default language rather than an error.
+
+What a render **selects** stays evaluated against the stored, untranslated values — a print template's row filter and an attached report's `filter:` / [`scope`](/spec/presentation#lifecycle-scope) alike — so a language can change how a rendered document reads but never what it contains.
+
+A render's language applies to that render alone: consecutive renders in different languages are each produced in their own.
+:::
+
 ### UI labels
 
 Generation also emits a per-project translation catalogue for every generated label: entity names (a humanised singular plus a plural form), field labels, form and report names, and report column headers. The default locale is generated for you; a translator adds a sibling locale folder with the same keys. The UI renders through these keys, falling back to the baked default label for any key a locale has not translated.

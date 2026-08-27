@@ -92,7 +92,7 @@ notifications:
 
 Add **`attach: print`** and the message carries the record's **own document** — the record rendered through its [print template](/spec/presentation#printable-documents) and attached. This is the declarative form of the most common outbound action a business document has: the invoice to its customer, the payslip to its employee, a reminder that carries the invoice it is about.
 
-The **render language**: `language:` fixes the print-template language; `languageFrom: <relation>.<field>` reads it per record from a one-hop to-one path of the entity the message is about (mutually exclusive with `language:`). Absent both — or when the resolved value is blank — the render falls back to the first entry of the application's configured language set at send time.
+The **render language**: `language:` fixes it; `languageFrom: <relation>.<field>` reads it per record from a one-hop to-one path of the entity the message is about (mutually exclusive with `language:`). Absent both — or when the resolved value is blank — the render falls back to the first entry of the application's configured language set at send time. It selects the print template and the language the attached document's own data is read in, both: see [the language of a render](/spec/data#the-language-of-a-render). It does not govern the message's `subject` and `body` — an attachment is a contractual document and belongs in the document's language, while the covering message belongs in the recipient's.
 
 ```yaml
     notify:
