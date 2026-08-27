@@ -247,7 +247,7 @@ A generator that predates the attributes ignores them and renders all rows — a
 The print template is written **create-if-absent** and never regenerated over. A printed document is a formatted, audited artefact you adapt by hand, and a newly added model field must not silently appear on an already-designed document.
 :::
 
-To add a language, add a file under a sibling language folder (`.../Print/bg/standard.print`); the print action asks which to use when several exist.
+To add a language, add a file under a sibling language folder (`.../Print/bg/standard.print`); the print action asks which to use when several exist. The chosen language selects the template **and** the language the document's data is read in, so a document rendered in one language is in that language throughout — see [the language of a render](/spec/data#the-language-of-a-render). The same holds wherever a render's language is declared rather than chosen: the language a versioned copy is minted in, and the `language:` / `languageFrom:` of a [notify block that attaches one](/spec/glue#the-notify-block-and-attach-print).
 
 ## See also
 
