@@ -39,6 +39,8 @@ fields:
 | `pattern` | an input-format regular expression the value must match (string / text fields only) |
 | `defaultValue` | the field's default: the column default, the reason a `required` field is not demanded from the caller, and the value a **new** row is seeded with in the UI (see [Field defaults](#defaultvalue-field-defaults)) |
 | `unique` | a UNIQUE constraint (e.g. a code or business key) |
+| `label` | what the field is called in the UI, replacing the humanized name (see [what a field is called](#label-countrylabels-what-a-field-is-called)) |
+| `countryLabels` | label variants resolved from the tenant's country rather than the reader's language (see [what a field is called](#label-countrylabels-what-a-field-is-called)) |
 | `visibleTo` | an allow-list of roles that may read the field, enforced where the data leaves the server (see [Role-scoped field visibility](#role-scoped-field-visibility-visibleto)) |
 | `precision` / `scale` | override the decimal default (16, 2) |
 | `readOnly` | rendered read-only in the UI (e.g. a calculated total) |
@@ -86,6 +88,52 @@ By default the generated UI controls follow declaration order - all fields first
 ```
 
 Names match field / relation names (case-insensitive). A partial order is fine - any property not listed keeps its default position and is appended after the listed ones.
+
+## label / countryLabels — what a field is called
+
+A field's caption is the humanized form of its name, which is right most of the time and cannot
+produce an acronym, a unit or a term of art: `nationalId` reads as "National Id". State it instead:
+
+```yaml
+fields:
+  - { name: nationalId, type: string, label: National ID }
+  - { name: iban,       type: string, label: IBAN }
+```
+
+The label is what every surface renders - the form caption, the list column header, the read-only
+details block - and it seeds the field's entry in the default-language catalog, so it is translated
+like any other label.
+
+Some terms are fixed by the **company's country**, not by the language its users read the interface
+in. A national identification number is called ЕГН in Bulgaria and Steuer-ID in Germany; an
+English-reading accountant at a Bulgarian company needs the Bulgarian term, and a Bulgarian-reading
+user at a German company does not. Declare such a label per country and let the tenant's country
+resolve it:
+
+```yaml
+- name: nationalId
+  type: string
+  label: National ID
+  countryLabels:
+    BG: ЕГН
+    DE: Steuer-ID
+```
+
+Keys are ISO 3166-1 alpha-2 country codes. Which country a deployment serves is a property of the
+tenant, not of the model - the intent declares which term applies where, and nothing else.
+
+::: info Normative
+A field's `label:` MUST replace the humanized field name wherever the field is rendered, and MUST
+seed its entry in the default-language catalog so it is translated like any other label.
+`countryLabels:` declares label variants keyed by ISO 3166-1 alpha-2 country code, resolved from the
+tenant's country and applied in **every** language: a label resolved by country is not a
+translation, and MUST NOT be treated as one.
+A country that declares no variant MUST fall back to `label:`, and a field that declares no label to
+the humanized name, so a model declaring neither behaves as before.
+A `countryLabels` key that is not a country MUST be rejected - it can never match a tenant, and
+would leave the base label rendering with nothing reported. A blank `label:`, and a variant with no
+label, MUST be rejected for the same reason.
+:::
 
 ## unique — a business key over more than one field
 
