@@ -62,6 +62,8 @@ A step event is an event **about the record the process runs on** — the proces
 An undeclared process or step; a step that occupies no observable moment (only a `userTask` or a `serviceTask` does — not a decision, a wait or the end); a process with no `trigger`, since there is then no record the event could be about.
 :::
 
+An event-driven [create-from](#event-driven-creation-event) binds to the same axis, narrowed by one rule of its own: the process must run **on** its `from:` entity, since the step event is about the record its process runs on and that record is the one the create-from reads.
+
 `onStepReached` fires before the step's own work begins — the moment a task becomes available in the inbox. `onStepCompleted` fires after the step finished **and** after its writes are persisted (a task's edits, a `setField`), so an observer never sees a stale record. Any number of entries may observe the same moment: the record is published once. A branch that jumps back into an observed step re-enters it, so its `onStepReached` observers fire again.
 
 ## notifications
@@ -523,7 +525,7 @@ Adds a button on the source view; the clone saves through the target's own layer
 
 ### Event-driven creation — `event:`
 
-A create-from may declare an `event:` instead of relying on the button — the follow-up document is minted the moment the source reaches a state, with nobody clicking. The canonical case is a document that arrives from the outside and is completed by an earlier step: a fine ingested by a webhook, whose responsible person is identified by a transition, must produce a declaration document from the fine and that person.
+A create-from may declare an `event:` instead of relying on the button — the follow-up document is minted the moment the source reaches a state, with nobody clicking. The trigger comes from either axis of [the event vocabulary](#the-event-axis-lifecycle-and-process-step-events): the source's own lifecycle, or a process step. The canonical case is a document that arrives from the outside and is completed by an earlier step: a fine ingested by a webhook, whose responsible person is identified by a transition, must produce a declaration document from the fine and that person.
 
 ```yaml
 generates:
@@ -543,8 +545,40 @@ generates:
 Exactly one trigger must be declared: `onTransition` (a status write — a `when: "<StatusRelation> == <status>"` guard is mandatory, the status named or numbered) or `onCreate` (the source's insert — the guard is optional, for a source with no status lifecycle). The entity named there must be the entity `from:` declares; the owning model is never repeated (`fromUses:` declares it). The guard must be evaluated against the source as re-read at delivery, not against the event payload, which is as-of the event and lacks anything a later step wrote.
 :::
 
+#### The process-step axis
+
+The `event:` map also takes the step binding the other consumers of the axis declare — `onStepReached` / `onStepCompleted: { process, step }`. It expresses a follow-up document that belongs to a **moment in a flow** rather than to a status write, and it is the route around a source whose write publishes no transition at all.
+
+```yaml
+generates:
+  - name: log-activation
+    from: Claim
+    to: LogEntry
+    event: { onStepCompleted: { process: ClaimApproval, step: activate }, mode: append }
+    map:
+      Claim: id                # the back-reference — required on both axes and in both modes
+      amount: amount
+    defaults:
+      step: "activate"         # which moment this row records
+      date: now
+```
+
 ::: info Normative
-An event-driven create-from is **at-most-once**: `map` must copy the source's primary key onto a to-one relation of the target back to the source, and the generated creation must return the already existing target instead of creating a second one. A file declaring an `event` without that back-reference must be rejected — a redelivery would otherwise mint a duplicate document. A create-from with no `event` carries no such guard: producing several targets from one source by clicking twice is a legitimate manual act.
+A step binding must name an existing process that declares a `trigger`, and an existing step that occupies a moment in the flow (a user task or a service task). The process's trigger entity must be the entity `from:` declares — a step event is about the record its process runs on, and that record is the one the create-from reads. A step binding whose source is owned by another model must be rejected: a process and its steps belong to the model that declares them. On the step axis the `when:` guard is optional; the step is the moment.
+:::
+
+#### Cardinality — `mode: once|append`
+
+The `event:` map may declare **`mode:`** — how many targets one trigger may produce. `once` (the default) is the at-most-once behaviour below; `append` creates one target per **delivered event**, which is what expresses a log entry per step, a protocol line per transition, an activity record per delivery.
+
+::: info Normative
+`mode` is `once` or `append`; any other value must be rejected rather than read as the default. The default is `once`. Under `append` no existing-target lookup is performed and every delivered event must create another target row. The back-reference `map` entry is required in both cardinalities — the dedup key under `once`, the created row's provenance under `append`. `mode` declared without a trigger must be rejected.
+:::
+
+`mode: append` is the **absence** of a guard, not a state-aware one: event delivery is at-least-once, so a redelivery appends a duplicate row, and a replacement for a target that was voided is not what this cardinality expresses. Anything that must exist at most once per source keeps `mode: once`. Two appending rules may deliberately share a target and a back-reference — each records a different moment.
+
+::: info Normative
+An event-driven create-from under the default `mode: once` is **at-most-once**: `map` must copy the source's primary key onto a to-one relation of the target back to the source, and the generated creation must return the already existing target instead of creating a second one. A file declaring an `event` without that back-reference must be rejected — a redelivery would otherwise mint a duplicate document. A create-from with no `event` carries no such guard: producing several targets from one source by clicking twice is a legitimate manual act.
 :::
 
 ::: info Normative
