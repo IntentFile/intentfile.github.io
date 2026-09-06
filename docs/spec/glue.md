@@ -706,6 +706,10 @@ When the account column must be chosen by a **source value** — a payment posts
 
 `by` is a source field or to-one relation, compared as a number (like a `when` guard); `cases` keys are the classifier's ids and values are columns of the rule entity; `default` (optional) is the fallback column. When no case matches and there is no default — or the selected column is null — the posting skips to the unposted worklist, exactly as a null `rule(<column>)` does. A conditional cell already branches the account, so it cannot also carry a row `when`.
 
+**An amended source rewrites its post.** A document that is rejected, corrected and issued again reaches the posting's moment a *second* time, and the post made the first time no longer describes it. So the derived content — the header assignments and every guarded item row — is compared with the post the back-reference finds: identical is a redelivery and writes nothing, different rewrites *that* post in place. One source has at most one post, before and after. The comparison is order-insensitive (stored rows have no declared order) and compares numbers by value, so a rescaled amount is not a change; a half-post — an item write that failed after the document was saved — is the same case, and completes.
+
+The rewrite stops where the created document's own lifecycle says somebody has taken it over: it is rewritable while its `function: EntityStatus` relation still holds the `init:` the posting's own create wrote, and a created document with no status lifecycle is always rewritable. Past that the divergence is reported, naming both documents, and the correction is left to a reversing entry — overwriting a document an accountant has acted on is worse than the divergence it repairs.
+
 A second posting can **reverse** the first (a reversal / credit) when the source is voided — pair it with the `transitions` void that flips the source into its void status. The reversal inherits `creates` / `backReference` / `rule` / `map` / `items` from the sibling it names, negates every item amount on the **same** side, links back to the original through a `storno` self-relation, and is fail-soft:
 
 ```yaml
