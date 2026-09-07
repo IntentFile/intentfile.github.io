@@ -283,9 +283,34 @@ Row-level and document-level validations, enforced on write / on a status transi
 - name: JournalEntryItem
   checks:
     - { kind: exactlyOne, fields: [debit, credit], message: "Exactly one of debit / credit" }
+- name: SalesInvoice
+  checks:
+    - { kind: requiredWhen, field: Customer.email, when: "sentMethod == 1", status: SENT,
+        message: "Sent Method is E-mail but the customer has no e-mail address" }
 ```
 
-`exactlyOne` runs on every user write; `itemsMin` / `itemsSumEqual` are gated on a status transition, so drafting stays unconstrained and a failing transition aborts with the message.
+`exactlyOne` runs on every user write, and so does a `requiredWhen` that names no status; `itemsMin` / `itemsSumEqual` are gated on a status transition, so drafting stays unconstrained and a failing transition aborts with the message.
+
+### kind: requiredWhen — a value required only under a condition
+
+`required: true` says a value must always be there. Most rules about a missing value are not like that: the value is needed for ONE way of handling the record and meaningless for the others. An invoice sent by e-mail needs the customer's e-mail address; one sent by post does not, and one handed over needs neither — so `required` on the address is not the rule, and without a way to say the real one an e-mailed invoice reaches "sent" with nobody to send it to, silently.
+
+```yaml
+- name: SalesInvoice
+  checks:
+    # the value lives on the related customer, and is needed at the status that sends the document
+    - { kind: requiredWhen, field: Customer.email, when: "sentMethod == 1", status: SENT,
+        message: "Sent Method is E-mail but the customer has no e-mail address" }
+    # ...and a rule about the record's own field, holding from the first save
+    - { kind: requiredWhen, field: reference, when: "kind == 'export'",
+        message: "An export needs a reference" }
+```
+
+`field:` is the value that must be present: a field of the record, or a one-hop `Relation.field` over a to-one — including a relation whose target is owned by another model. The related record is loaded and the field read from it, so a relation that is not set counts as an absent value and the check fires: the value the rule is about cannot be reached.
+
+`when:` is the condition — one or more `<Property> ==|!= <literal>` comparisons over the record's own properties, ANDed. It compares strings, integers, booleans and a to-one's key, the types an equality is exact on; a decimal, a double or a date is refused rather than compared for equality. A literal that is not a value of the compared property's type is refused too, as is a condition without the comparison shape at all: reading an uninterpretable condition as "always true" would turn the entry into an unconditional `required` nobody authored, and as "always false" would switch the rule off — both silently. A status may be named by its seeded name, as everywhere else.
+
+`status:` is optional, and its presence decides WHEN the rule is evaluated. Without it the rule holds on every user write. With it the rule is evaluated when the record is persisted carrying that status — the transition that sends the document, not the drafting before it, which is what makes the rule expressible at all: a record being typed has not chosen how it will be sent.
 
 ### kind: guard — a precondition over an aggregate
 

@@ -116,6 +116,10 @@ entities:
 - name: JournalEntryItem
   checks:
     - { kind: exactlyOne, fields: [debit, credit], message: "Exactly one of debit / credit" }
+- name: SalesInvoice
+  checks:
+    - { kind: requiredWhen, field: Customer.email, when: "sentMethod == 1", status: SENT,
+        message: "Sent Method is E-mail but the customer has no e-mail address" }
 ```
 
 ### processes
