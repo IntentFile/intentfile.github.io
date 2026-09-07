@@ -116,6 +116,9 @@ entities:
 - name: JournalEntryItem
   checks:
     - { kind: exactlyOne, fields: [debit, credit], message: "Exactly one of debit / credit" }
+- name: SalesInvoice
+  checks:
+    - { kind: compare, field: due, op: ge, than: date, message: "Due cannot be before the invoice date" }
 ```
 
 ### processes
