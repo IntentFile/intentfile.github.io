@@ -283,9 +283,23 @@ Row-level and document-level validations, enforced on write / on a status transi
 - name: JournalEntryItem
   checks:
     - { kind: exactlyOne, fields: [debit, credit], message: "Exactly one of debit / credit" }
+- name: SalesInvoice
+  checks:
+    - { kind: compare, field: due,  op: ge, than: date,  message: "Due cannot be before the invoice date" }
+    - { kind: compare, field: paid, op: le, than: total, message: "Paid cannot exceed the total" }
 ```
 
-`exactlyOne` runs on every user write; `itemsMin` / `itemsSumEqual` are gated on a status transition, so drafting stays unconstrained and a failing transition aborts with the message.
+`exactlyOne` and `compare` run on every user write; `itemsMin` / `itemsSumEqual` are gated on a status transition, so drafting stays unconstrained and a failing transition aborts with the message.
+
+### kind: compare — two values of one row
+
+`compare` relates two of the record's own fields, read as `field <op> than`, where `op` is `ge`, `gt`, `le`, `lt`, `eq` or `ne`. It is the rule every business document has and none of the other kinds can state: a due date never before the invoice date, a validity `to` never before its `from`, a delivery date never before the order date, an amount paid never above the total.
+
+Being row-level it holds from the first save and takes no `status` gate — a rule about two values of one row is not something a transition switches on. Both operands are the entity's own **fields** (a comparison of two foreign keys means nothing) and must be in one comparison family: both dates, both timestamps, or both numbers of any width, where numbers compare by value so a `decimal` against a `long` is exact. A date against a timestamp is refused rather than coerced, as are a string / boolean / month operand and a field compared with itself.
+
+An **absent operand is not a violation**: a comparison is about two values that exist, and whether a field may be empty at all is `required:`. A record carrying no `due` passes, and starts failing the moment a due date is entered behind the date.
+
+The alternative — a hand-written calculated action that recomputes the offending value — *corrects* instead of refusing, so the person who typed the date is never told it was overruled.
 
 ### kind: guard — a precondition over an aggregate
 
