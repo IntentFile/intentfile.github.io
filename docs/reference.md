@@ -28,6 +28,7 @@ The quick lookup surface: one line and a minimal snippet per construct. For rule
 | [`hierarchy` / `leafOnly`](/spec/entities#hierarchy-leafonly-tree-entities) | tree entities, leaf-only references |
 | [calculated fields](/spec/entities#calculated-fields) | server + UI-evaluated expressions, date helpers, call-outs |
 | [`relations` / `composition`](/spec/relations#relations) | associations and master-detail compositions |
+| [`relations` / `whenMasterDeleted`](/spec/relations#deleting-the-master-whenmasterdeleted) | whether deleting a master deletes the composition children it owns, or is refused while they exist |
 | [`uses`](/spec/relations#multi-model-applications) | reuse entities owned by another intent model |
 | [`related`](/spec/relations#related) | a read-only register of the records referencing this entity, on its own page |
 | [`processes`](/spec/processes#processes) | workflows: user tasks, decisions, waits, boundary timers |
