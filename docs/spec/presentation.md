@@ -119,9 +119,15 @@ reports:
     dimensions: [Product]
     measures: ["sum(quantity)", "sum(total)"]
     widget: { kind: list, limit: 5, label: Sales by Product }
+
+  - name: RequestsByStatus
+    source: VacationRequest
+    dimensions: [Status]
+    measures: ["count(*)", "sum(days)"]   # count(*) is what the count tile sums
+    widget: { kind: count, label: Vacation Requests }
 ```
 
-- `kind: count` (default) — the number of records the report yields.
+- `kind: count` (default) — the number of records the report yields. An **aggregating** report (one declaring `measures`) yields one row per group, so its record count is its `count(*)` measure summed over those rows — a report dimensioned by status shows the fourteen requests, not the four statuses they fall into. Such a report must declare that measure; an aggregating report with a count tile and no `count(*)` is rejected at generation, because the only number left to show is the number of groups. A report that does not aggregate needs nothing: one of its rows is one record.
 - `kind: value` — one aggregate cell: `value` names a measure; `at` pins dimension columns. The `now` token resolves at view time, type-aware (current `YYYYMM` on a `month(x)` dimension, current year on `year(x)`, today on a date column).
 - `kind: list` — the report's first `limit` rows (default 5) as a compact table tile.
 
