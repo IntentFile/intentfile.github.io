@@ -171,6 +171,10 @@ forms:
 
 Generates one form per `forms[]` entry. Controls are typed by looking each field up against the bound entity (string to a text input, integer / decimal to a number input, boolean to a checkbox, date to a date picker, and so on). Actions become buttons, coloured by name (approve to positive; reject / decline / delete / cancel to negative; save / submit to emphasised).
 
+A `relation.field` entry reads a field of a one-hop to-one relation, read-only — the related record is loaded *for* the form rather than typed into it. The relation may be **cross-model**, which is what lets a document's form show a field of the entity another module owns: an invoice's Send form showing the customer's address, so the clerk sees an empty one before pressing Send. It is the same one-hop path a [notify](/spec/glue#notifications) recipient takes; the relation's `model:` must be declared in [`uses`](/spec/relations#reuse-dont-redefine--uses), and the referenced field is checked against the **owner's** model when the application is generated.
+
+A conforming generator MUST report a field the owner model does not declare rather than dropping the control: a control bound to a value nothing ever provides looks exactly like a record that has no value.
+
 ## actions — custom buttons
 
 Developer-defined buttons that open a custom page — the escape hatch when a workflow or a generated screen is not enough:
