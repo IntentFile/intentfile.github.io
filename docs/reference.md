@@ -56,6 +56,7 @@ The quick lookup surface: one line and a minimal snippet per construct. For rule
 | [`settlements`](/spec/glue#settlements-payment-allocation) | auto-allocation of payments across open invoices |
 | [`expansions`](/spec/glue#expansions-child-rows-from-a-date-span) | generated child rows per day / week / month |
 | [`generates`](/spec/glue#generates-create-from) | one-click document-from-document cloning |
+| [`generates.items.where`](/spec/glue#which-source-rows-become-lines-where-refuse) | which of the source document's rows become target lines - and what an unqualified one costs |
 | [`generates.event`](/spec/glue#event-driven-creation-event) | mint the document on a source event - a status write, a create, or a process step |
 | [`generates.event.mode`](/spec/glue#cardinality-mode-once-append) | one target per source (`once`, default) or one per delivered event (`append`) |
 | [`resolves`](/spec/glue#resolves-fill-a-relation-from-a-register-valid-on-a-date) | fill a to-one from the register row valid on the record's date |
