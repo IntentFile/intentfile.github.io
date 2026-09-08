@@ -543,6 +543,34 @@ generates:
 
 Adds a button on the source view; the clone saves through the target's own layer, so numbering, status init and calculated fields fire. An optional `sourceStatus` flips the source record's status once the target exists.
 
+### Which source rows become lines — `where:` / `refuse:`
+
+The `items:` block above clones **every** row of the source document, which is only right when the whole document qualifies. Usually it does not: an unapproved member timesheet must not reach the customer's invoice, and one with no hours at all is a line the target refuses outright — so a single unfinished row stopped the whole month from being invoiced, with nothing the model able to say otherwise. `where:` is the source-row rule:
+
+```yaml
+    items:
+      from: EmployeeTimesheet
+      to: SalesInvoiceItem
+      where:
+        - { field: Status,     op: eq, value: APPROVED }   # only approved member timesheets
+        - { field: totalHours, op: gt, value: 0 }          # an empty one is not a line
+      map: { Name: employeeName, Quantity: totalHours, Price: rate }
+```
+
+Every condition must hold for a row to become a line. It is the same `{ field, op, value }` triple a [scheduled query's `where`](#schedules) carries: `op` is one of `eq` / `ne` / `gt` / `ge` / `lt` / `le` / `like`, and the value may be a moment (`CURRENT_DATE`, `CURRENT_TIMESTAMP-PT30M`) resolved against the clock of the run that generates. `field:` names a field or a to-one relation of the items `from:` entity, and a condition on its own `function: EntityStatus` relation may use the seeded status **name** — on the item's nomenclature, not the document header's. An absent value never matches, which is what makes `gt 0` say "an empty row is not a line" directly.
+
+**Skipping is the default; `refuse:` is the other reading.** A rejected line quietly dropped from an invoice and a rejected line quietly billed are both wrong, for different months, so the document declares which it means:
+
+```yaml
+      refuse: "Member timesheet is not approved"
+```
+
+With it, an unqualified row refuses the whole create-from with the authored message and the keys of the offending rows — which of a hundred lines to go and fix is the caller's whole question. Nothing is created: the header, its lines and the source's `sourceStatus` flip are one unit. `refuse:` without `where:` is rejected — with no conditions no row is ever unqualified.
+
+**A rule that qualifies no row refuses either way.** A document of no lines is not the document that was asked for, and it is the harder failure to notice: it exists, it counts as the period's billing, and it is empty.
+
+The rule belongs to the mirror form of `items:`. The computed form — `items` as a list of synthetic lines over the source record — has no source rows to select from and guards each line with its own `when` cell. An `items` block that declares no `where:` behaves exactly as it did.
+
 ### Event-driven creation — `event:`
 
 A create-from may declare an `event:` instead of relying on the button — the follow-up document is minted the moment the source reaches a state, with nobody clicking. The trigger comes from either axis of [the event vocabulary](#the-event-axis-lifecycle-and-process-step-events): the source's own lifecycle, or a process step. The canonical case is a document that arrives from the outside and is completed by an earlier step: a fine ingested by a webhook, whose responsible person is identified by a transition, must produce a declaration document from the fine and that person.
