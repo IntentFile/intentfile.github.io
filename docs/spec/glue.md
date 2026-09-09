@@ -695,6 +695,8 @@ postings:
       - { Account: rule(receivableAccount), credit: "Amount" }
 ```
 
+`rule.match` is a single `column: literal` selector, and the literal has to say something: it is matched against the rule row's own column as authored, so a blank one looks up the empty value, matches no rule row, and sends *every* source document to the unposted worklist while the model, the generation and the deployment all stay healthy. An absent or blank match value is an authoring error, reported when the intent is read. A rule *row* whose match column is empty is a different thing - an ordinary row of the rule table, matched by no non-blank literal.
+
 ### Conditional rule column
 
 When the account column must be chosen by a **source value** — a payment posts to the bank account for a transfer, the cash account for cash — a single item row selects the rule column by a classifier instead of duplicating the row per case (the same `by` / `cases` / `default` shape a conditional value-copy uses). Quote it, since it carries colons and braces:

@@ -325,6 +325,8 @@ One outcome would have fitted exactly one real rule. Negative stock wants the wr
 
 The total is recomputed from the guarded entity's own rows for the incoming record's key-tuple - excluding the record being updated - rather than read from the materialised aggregate, so the decision cannot race the aggregate's maintenance. The guarded entity must be the aggregate's own source.
 
+A record with any of the aggregate's grouping keys unset **is not guarded at all**. It belongs to no key-tuple - the aggregate itself ignores such a row, and materialises no target row for it - so it contributes to no total and can breach no minimum: the write proceeds, nothing is refused, a `marker` reads as holding and a `setStatus` is not written. This is the guard's half of a rule the aggregate already states, and it keeps the two a pair of computations of the same total rather than of two different ones. A grouping key that must always be there is declared `required`, which is the better statement where it is true.
+
 `outcome: task` stamps a flag; it does not create or route to a task. A workflow [decision](/spec/processes#decision-steps) reads the marker and routes the record - the two constructs compose, and the guard is the part that computes.
 
 ## Role-scoped field visibility — `visibleTo`
