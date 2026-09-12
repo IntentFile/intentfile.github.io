@@ -69,7 +69,7 @@ Generators map each logical type to a physical column type. `text` is a large-ob
 | `label:` | a stored, read-only display name (see [label](#label-a-stored-display-name)) |
 | `function:` | an explicit presentation role (see [function](#function-the-presentation-role)) |
 | `order:` | sequences form controls and list columns |
-| `duplicable: true` | adds a *Duplicate* button that clones a document through the normal create path |
+| `duplicable:` | adds a *Duplicate* button that clones a document through the normal create path (see [what a copy does not carry over](#what-a-copy-does-not-carry-over)) |
 | `imports:` | injects import lines into the generated data-access layer (pairs with calculated actions) |
 | `aggregate: true` | on a document master's numeric field, keeps it equal to the sum of the items' same-named field |
 | `kind: setting` | marks the entity as nomenclature / configuration (see [Setting entities](#setting-entities)) |
@@ -86,6 +86,25 @@ By default the generated UI controls follow declaration order - all fields first
 ```
 
 Names match field / relation names (case-insensitive). A partial order is fine - any property not listed keeps its default position and is appended after the listed ones.
+
+### What a copy does not carry over
+
+`duplicable: true` adds a *Duplicate* button to a document entity. It clones the current document - header plus line items - into a new draft and opens it, through the normal create path, so the document number, the initial status, the audit columns and every calculated or aggregate field are reassigned. Everything else is copied.
+
+Copying everything else is wrong for the fields a business rule says must be fresh - the date of an invoice, its due date, its tax-event date. A create-time rule cannot correct them, because such a rule fills an **empty** value and respects a present one, which is exactly what makes the copied value stick. The object form of `duplicable` states which fields the copy does not carry over:
+
+```yaml
+- name: SalesInvoice
+  duplicable:
+    defaults: { date: now }        # constants written into the clone
+    reset: [due, taxEventDate]     # dropped, so the entity's own create-time rule refills them
+```
+
+`reset:` is for a field that has a create-time rule (`calculatedActionOnCreate`, `defaultValue`): each name is dropped from the clone, so the create fills it exactly as it would on a hand-made document. `defaults:` is for a field that has none: each entry is assigned into the clone after the resets. `now` is today in the field's own shape - `YYYY-MM-DD` for a `date` field, `YYYY-MM` for a `month` field, `YYYY-Www` for a `week` field - and any other value is a literal coerced to the property's declared type. Both keys name the entity's own fields and to-one relations.
+
+The clone is built in this order: the built-in drops (primary key, audit columns, the `function: EntityStatus` relation, the `number:` field, every `readOnly` and `aggregate` property), then the `reset:` names, then the `defaults:` assignments, then every remaining property copied from the source. `now` resolves against the acting user's local calendar, never UTC - east of Greenwich a UTC-derived date is yesterday for the last hours of every day. `duplicable: true` alone behaves as it always did.
+
+Invalid, and reported when the model is read: a `reset` or `defaults` name that is not a field or a to-one relation of the entity; a name that is one of the built-in drops, which the *Duplicate* decided long before reading this block; the same name in both keys; `now` on a property that is not a `date`, `month` or `week`; a `reset` of a required field with neither a `defaultValue` nor a create-time rule, which would make every copy fail; and a `duplicable` value that is neither `true`, `false` nor a mapping.
 
 ## unique — a business key over more than one field
 
