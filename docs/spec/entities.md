@@ -104,7 +104,7 @@ Copying everything else is wrong for the fields a business rule says must be fre
 
 The clone is built in this order: the built-in drops (primary key, audit columns, the `function: EntityStatus` relation, the `number:` field, every `readOnly` and `aggregate` property), then the `reset:` names, then the `defaults:` assignments, then every remaining property copied from the source. `now` resolves against the acting user's local calendar, never UTC - east of Greenwich a UTC-derived date is yesterday for the last hours of every day. `duplicable: true` alone behaves as it always did.
 
-Invalid, and reported when the model is read: a `reset` or `defaults` name that is not a field or a to-one relation of the entity; a name that is one of the built-in drops, which the *Duplicate* decided long before reading this block; the same name in both keys; `now` on a property that is not a `date`, `month` or `week`; a `reset` of a required field with neither a `defaultValue` nor a create-time rule, which would make every copy fail; and a `duplicable` value that is neither `true`, `false` nor a mapping.
+Invalid, and reported when the model is read: a `reset` or `defaults` name that is not a field or a to-one relation of the entity; a name that is one of the built-in drops, which the *Duplicate* decided long before reading this block; the same name in both keys; `now` on a property that is not a `date`, `month` or `week`; a `reset` of a required value the create cannot fill on its own - a field with neither a `defaultValue` nor a create-time rule, or a to-one relation that declares no `init:` - which would make every copy fail; and a `duplicable` value that is neither `true`, `false` nor a mapping.
 
 ## unique — a business key over more than one field
 
