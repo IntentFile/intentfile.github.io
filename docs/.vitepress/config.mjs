@@ -107,7 +107,7 @@ export default defineConfig({
       { text: 'Reference', link: '/reference', activeMatch: '/reference' },
       { text: 'Examples', link: '/examples', activeMatch: '/examples' },
       { text: 'Manifesto', link: '/manifesto', activeMatch: '/manifesto' },
-      { text: 'v1.8', link: '/spec/' },
+      { text: 'v1.9', link: '/spec/' },
     ],
     sidebar: {
       '/': [
