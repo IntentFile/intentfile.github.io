@@ -102,6 +102,27 @@ A [report](/spec/presentation#reports) reads the same data, so it reads it in th
 Every read of a translatable property of a `multilingual: true` entity is served in the caller's requested language, and a report column bound to such a property is such a read. What a report **matches** is unaffected: a report's `filter:`, its [`scope`](/spec/presentation#lifecycle-scope) and any condition applied to it are evaluated against the stored, untranslated values — so translating content can never change which rows a report returns, only how they read. A property with no translation for the requested language, and a caller who requested none, both read the stored value.
 :::
 
+### Keys are not translated
+
+Some string properties are **keys, not labels** — the column a [posting](/spec/glue#postings--source-document-to-ledger)'s determination rule matches on, the business key an [arrival](/spec/glue#inbound--arrivals-from-outside)'s lookup resolves a relation by, a code another model refers to. Such a value identifies a row; it is not text to be read in the reader's language. Declare it `translatable: false`:
+
+```yaml
+entities:
+  - name: PostingRule
+    kind: setting
+    multilingual: true
+    fields:
+      - { name: id,           type: integer, primaryKey: true, generated: true }
+      - { name: name,         type: string }                       # a label - translated
+      - { name: documentType, type: string, translatable: false }  # a key - never translated
+```
+
+Without the marker the comparison is on a moving target: the read overlay shows the translated value, saving the row from the UI writes the translated value into the stored column, and from then on the literal the intent was authored with matches nothing. Nothing fails — the rule simply stops applying, in one language, for as long as it takes someone to read the data and notice.
+
+::: info Normative
+A property marked `translatable: false` carries no per-language value: no column in the entity's translation table, never overlaid on a read, read as stored in a report column, and refused in a translation seed. The default is `true`, and declaring it explicitly changes nothing. The marker must be able to mean something: on an entity that is not `multilingual: true`, or on a property that is not string-typed, it is an authoring error rather than an accepted no-op. A property a determination rule matches on, and a property a business-key lookup resolves by, must not be translated — matching on a translated property is an authoring error naming this marker.
+:::
+
 ### UI labels
 
 Generation also emits a per-project translation catalogue for every generated label: entity names (a humanised singular plus a plural form), field labels, form and report names, and report column headers. The default locale is generated for you; a translator adds a sibling locale folder with the same keys. The UI renders through these keys, falling back to the baked default label for any key a locale has not translated.
