@@ -126,6 +126,8 @@ entities:
 - name: SalesInvoice
   checks:
     - { kind: compare, field: due, op: ge, than: date, message: "Due cannot be before the invoice date" }
+    - { kind: requiredWhen, field: Customer.email, when: "sentMethod == 1", status: SENT,
+        message: "Sent Method is E-mail but the customer has no e-mail address" }
 ```
 
 ### processes
