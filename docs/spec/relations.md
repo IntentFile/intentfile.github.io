@@ -21,6 +21,29 @@ Relation kinds: `oneToMany`, `manyToOne`, `oneToOne`, `manyToMany`. The foreign 
 
 Composition is **opt-in** — most required FKs are plain associations, and composition is explicit.
 
+### Deleting the master — `whenMasterDeleted`
+
+Composition is ownership: the child is a detail of its master, with a NOT NULL key because it cannot exist without it. So a delete of the master cannot leave those rows behind — an orphan is invisible in the UI (a detail is reached through its master's page, and the master is gone) while every report, roll-up and aggregate over the child keeps counting it. `whenMasterDeleted` chooses between the two sane outcomes, on the child that declares the composition:
+
+```yaml
+- name: SalesOrderItem
+  relations:
+    # deleted with the order — the default, so the key may be omitted
+    - { name: order, kind: manyToOne, to: SalesOrder, composition: true, whenMasterDeleted: cascade }
+
+- name: SalesOrderCopy
+  relations:
+    # the order cannot be deleted while a copy of it exists
+    - { name: order, kind: manyToOne, to: SalesOrder, composition: true, whenMasterDeleted: refuse }
+```
+
+- **`cascade`** (the default) — the children go with the master, and each child's deletion is a deletion in full: its own composition children with it (a chain of any depth unwinds), its deletion observed by the reactions bound to it, so aggregates and roll-ups over the child relinquish what they counted. The master's deletion and the children's are one atomic unit.
+- **`refuse`** — the master's delete is rejected while any child of that relation exists, naming both entities. Nothing is deleted; the master becomes deletable once the children have been removed deliberately.
+
+::: info Normative
+A conforming generator must, for every composition, either delete the children with the master or reject the master's deletion — the default is `cascade`, whether or not the key is authored, because it is what composition means. Both outcomes must hold for **every** writer that can delete the master, not only for a delete arriving over a generated interface: a reaction, a scheduled write and a cascade from a further master reach the same rows. `whenMasterDeleted` is valid only on a `composition: true` to-one, and only on the entity's first composition (its composition parent); anywhere else, and for any value other than `cascade` or `refuse`, it is an error.
+:::
+
 ### Relation attributes
 
 ```yaml
