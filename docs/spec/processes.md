@@ -33,6 +33,45 @@ Service-task shapes: `setField` / `setRelationField` (generated handlers that wr
 
 A `notify` service task stands alone: it cannot carry another action (`setField`, `setRelationField`, `call`, `delegate`) on the same step. Sending is the step's whole purpose, and a step that both writes and sends hides which of the two failed.
 
+### retry / onError — a step's failure is part of the model
+
+A service task whose work is a **call** — a `delegate:` handler, or a `notify:` send — may declare what happens when that call does not succeed. Without it, everything about a flow is modelled right up to the first failure, at which point the model stops describing what the application does: the failure becomes an incident recorded against the *job*, and the record the process is about is untouched. A document that was issued correctly then sits in `Issued` for ever because a mail server was briefly unreachable — with no error message and no failure status. It is not visibly wrong, it is invisibly stalled.
+
+```yaml
+- name: createSchema
+  kind: serviceTask
+  args:
+    delegate: SchemaProvisioner
+    retry: { count: 3, every: PT30S }
+    onError: recordFailure
+    next: notifyOwner
+
+# the same two keys on a send: its whole work is the message, and a mail
+# server blinks exactly as any remote call does
+- name: notifyOwner
+  kind: serviceTask
+  args:
+    notify: { to: owner.email, subject: "Tenant {title} is ready", body: "..." }
+    retry: { count: 3, every: PT30S }
+    onError: recordFailure
+    next: provisioned
+
+# the error route: {error} is the FINAL attempt's message
+- { name: recordFailure, kind: serviceTask, args: { setField: failureMessage, value: "{error}", next: failed } }
+```
+
+- **`retry: { count: <n>, every: <ISO-8601 duration> }`** — re-attempt the failed step `count` **further** times (an integer >= 1), spaced by `every` (the same vocabulary as a boundary timer's `after`). Each failed attempt is undone before the next runs.
+- **`onError: <step | end>`** — where the exhausted failure routes, validated and routed like a decision branch. With no `retry`, the first failure is the exhausted one. Route the main flow around the error steps with `next`, as with decision branches.
+- **`{error}`** — the failure message of the attempt that routed. A `setField` value of exactly `{error}` writes it onto the record the process is about.
+
+::: info Normative
+`retry` and `onError` apply to a `delegate:` and to a non-fan-out `notify:` service task. On any other step they must be an authoring error rather than an accepted key with no effect: on a `setField` / `setRelationField` step, because a status write is refused by the model's own gates and a gated one is refused to the person who acted, so routing that failure away would take the refusal out of their hands; on a `call:` or bare service task, because neither is covered; on a fan-out `notify` (one carrying `forEach`), because a fan-out must not fail its activity, so neither key could ever fire — a fan-out's deliveries are observed with the notify block's `outcome:` field and the `onNotifyFailed` axis instead; and on any step kind other than `serviceTask`.
+:::
+
+::: info Normative
+A step that declares neither key keeps the platform's own failure handling, and an intent using neither is unaffected. The writes on an `onError` route must commit — the route exists so the record carries why the step failed — while the intermediate re-attempted failures must not. The message made readable as `{error}` must name the failure's cause and not only the step that failed; it is the only account of the failure the record will carry. `{error}` must be rejected on a step no `onError` route reaches, and as part of a larger value.
+:::
+
 ### Decision steps
 
 `if` + `then` are mandatory, `else` optional. `then` / `else` must name a declared step or the literal `end`; the parser validates this, so a typo fails at parse time rather than producing an invalid workflow. Without `else`, the gateway default falls through to the next step.
