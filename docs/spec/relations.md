@@ -87,6 +87,32 @@ A conforming generator must, for every composition, either delete the children w
 
 - **`where`** filters the dropdown to options matching a static condition.
 
+### Which target rows a picker offers — `pickable`
+
+A picker lists the target's rows, and without a rule it offers every one of them the same way. Most rules about WHICH row may be picked are not a filter on one value, though — they are a completeness rule over the target row. An invoice can only go out to a customer who carries a registration number and an address; a customer created with only a name is a legitimate row (it may already have quotations), so it cannot be refused at creation. Without a way to say so on the picker, a clerk picks it onto an invoice, types twenty lines, and learns only at the issuing transition that the invoice cannot go out. `where` narrows by one static value and `dependsOn.filterBy` by another control's value; neither says "offer this row only while it is complete", and neither can say why a row is not offered.
+
+```yaml
+- name: SalesInvoice
+  relations:
+    - { name: Customer, kind: manyToOne, to: Customer, model: customers, required: true,
+        pickable: { when: [registrationNumber != null, address != null],
+                    else: mark, message: "Registration data incomplete" } }
+    - { name: Product, kind: manyToOne, to: Product,
+        pickable: { when: "active == true", else: hide } }
+```
+
+`when:` is the condition over the TARGET row — one term, or a list of terms, which is their AND. A term is `<target property> ==|!= <literal>` (a string, integer or boolean field, or a to-one's key, with a literal of that type) or `<target property> ==|!= null`, where `== null` means absent and `!= null` means present — neither absent nor blank — on a property of any type. A term reads the target row itself: its own fields and to-one relations, never a path. Several terms are written as a list, not as a conjunction inside one string (`"a != null && b != null"` is refused).
+
+`else:` decides what the picker does with a row that fails the condition. **`mark`** (the default) lists it, not choosable, with `message:` shown next to its name — so the person picking learns why before choosing; without an authored message the condition text itself is shown, and a marked row always says why. **`hide`** leaves it out. Either way, a value the record already holds keeps its label and stays listed, not choosable, when it fails the rule: a customer whose data was removed after the invoice was drafted never turns into an unlabelled key or an empty control. A picker narrowed by `dependsOn` or `where` applies the rule to what remains, and selects a single remaining option by itself only when exactly one remaining row is pickable.
+
+`pickable` governs the **picker**, not the write. An API call, an import or an automated create never sees a picker, so the write-side rule is declared separately — typically a [`checks: requiredWhen`](/spec/entities#kind-requiredwhen-a-value-required-only-under-a-condition) gated on the status that needs the value — and the two are meant to be declared together.
+
+It is refused on anything but a `manyToOne` / `oneToOne`, on a `subset`, on a composition parent (preset by the context, never picked), on a `function: EntityStatus` relation (a read-only badge), and together with `leafOnly` (a hierarchy picker offers its own rows). A target owned by another model is held to the grammar when the model is read, and its properties are checked against the owning model at generation.
+
+::: info Normative
+A conforming generator must apply a `pickable` rule to every picker it generates for the relation and must not offer a failing row as a choice: under `mark` it is listed, not choosable, with the message (or the authored condition); under `hide` it is not listed. A value the record already holds must be displayed with its label and remain listed, not choosable, even when it fails the rule. A term without the comparison shape, a literal that is not a value of the compared property's type, and a property that is not a field or to-one relation of the target are authoring errors — never read as always true or always false. `pickable` is not a constraint on writes.
+:::
+
 ## Many-to-many
 
 An n:m is always an **intermediate (link) entity** — one row per link, holding a `composition` to one side and a `manyToOne` to the other (which may be cross-model via `model:`). It is a real entity: it has a table, it appears as a detail grid with a dropdown under the declaring entity, and it can be seeded, reported on and referenced like any other — which is what a real n:m relationship needs anyway.
