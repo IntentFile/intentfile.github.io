@@ -387,6 +387,35 @@ That is why a `folder` source requires its `cron` (and why a `cron` is an error 
 
 Conversation-shaped transports — acknowledgements, retries with backoff, certificates — stay [beyond the boundary](/spec/#the-scope-boundary): they have state and failure semantics no one-line declaration should pretend to carry.
 
+### Reading an arrival as an envelope — `accept` / `map`
+
+An arrival may declare how its payload is **read**. Without these keys the payload is the record; with them it is an envelope, which is what an integration contract normally is.
+
+```yaml
+inbound:
+  - name: orders
+    source: { queue: orders }
+    accept: { type: order.placed, version: 1 }   # anything else: acknowledged and ignored
+    create: Order
+    map:
+      orderNumber: orderNumber                    # property <- envelope key
+      customer:    { lookup: Customer, by: code, from: customerCode }   # business key -> relation
+```
+
+`accept` gates the arrival on the envelope keys it names. `map` fills a property of `create` from an envelope key, or — given `{ lookup, by, from }` — from the record of another entity that a **business key** identifies: the envelope carries a name, the entity stores a reference.
+
+::: info Normative
+`accept` and `map` are independent, both optional, and both valid on every arrival — they describe the payload, not the transport. An arrival declaring neither behaves exactly as one specified before them.
+
+A message matching every key of `accept` is ingested. A message that does not match MUST be acknowledged and ignored, with a diagnostic; it MUST NOT be failed, since redelivery cannot change the outcome. `accept` values are scalars.
+
+Each key of `map` MUST name a field or a to-one relation of `create`; the entity's key MUST NOT be mapped, being assigned on creation. A value is an envelope key, or a lookup declaring exactly `lookup`, `by` and `from`. A lookup MUST fill a to-one relation, `lookup` MUST name that relation's target, and `by` MUST name a field of the target that identifies at most one record — a field declared unique, or the target's key — and one that a business key can travel as, namely text or an integer. A generator MUST refuse a `by` that does not, rather than resolve a lookup that could match several records.
+
+A lookup matching exactly one record fills the relation. A lookup matching none MUST reject the arrival, reporting the unresolved value; it MUST NOT store the record with the relation unset. A key declared with no value at all — in either block — MUST be reported as an authoring error rather than read as an empty one.
+
+A mapped record MUST be saved through the entity's ordinary write path, exactly as an unmapped one is: mapping changes what the record is built from, never how it is stored.
+:::
+
 ## outbound — departures on a queue or a topic
 
 The mirror of `inbound`: the application **raises a business event** for something outside it, on a message channel rather than over HTTP.
