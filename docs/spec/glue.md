@@ -409,11 +409,45 @@ inbound:
 
 A message matching every key of `accept` is ingested. A message that does not match MUST be acknowledged and ignored, with a diagnostic; it MUST NOT be failed, since redelivery cannot change the outcome. `accept` values are scalars.
 
-Each key of `map` MUST name a field or a to-one relation of `create`; the entity's key MUST NOT be mapped, being assigned on creation. A value is an envelope key, or a lookup declaring exactly `lookup`, `by` and `from`. A lookup MUST fill a to-one relation, `lookup` MUST name that relation's target, and `by` MUST name a field of the target that identifies at most one record — a field declared unique, or the target's key — and one that a business key can travel as, namely text or an integer. A generator MUST refuse a `by` that does not, rather than resolve a lookup that could match several records.
+Each key of `map` MUST name a field or a to-one relation of `create`, or — as a collection, below — a one-to-many relation of `create` whose target is a composition child of it; the entity's key MUST NOT be mapped, being assigned on creation. A value is an envelope key, or a lookup declaring exactly `lookup`, `by` and `from`. A lookup MUST fill a to-one relation, `lookup` MUST name that relation's target, and `by` MUST name a field of the target that identifies at most one record — a field declared unique, or the target's key — and one that a business key can travel as, namely text or an integer. A generator MUST refuse a `by` that does not, rather than resolve a lookup that could match several records.
 
 A lookup matching exactly one record fills the relation. A lookup matching none MUST reject the arrival, reporting the unresolved value; it MUST NOT store the record with the relation unset. A key declared with no value at all — in either block — MUST be reported as an authoring error rather than read as an empty one.
 
 A mapped record MUST be saved through the entity's ordinary write path, exactly as an unmapped one is: mapping changes what the record is built from, never how it is stored.
+:::
+
+#### An envelope array as composition children — collections
+
+An envelope often carries a set: an order with its lines, a request with the items it applies to. A `map` key naming a one-to-many relation of `create` whose target is a composition child takes a **collection**, and the array becomes the master's children — one child per element, stored with the master as one unit.
+
+```yaml
+inbound:
+  - name: orders
+    source: { queue: orders }
+    create: Order
+    map:
+      orderNumber: orderNumber
+      lines:
+        from: lines
+        max: 100
+        map:
+          quantity: qty
+          product:  { lookup: Product, by: sku, from: sku }
+      tags: { from: tags, map: { label: "." } }
+```
+
+`from` names the envelope key holding the array, `map` fills one child from one element, and `"."` is the element itself, for an array of plain values.
+
+::: info Normative
+A collection declares exactly `from` and `map`, and optionally `max`. Its key MUST name a one-to-many relation of `create` whose target is a composition child of `create`, declared in the same model; at most one collection of an arrival fills a given child entity. `from` names an envelope key and MUST NOT be `"."`. `max`, when declared, is a whole number from 1 to 10 000.
+
+Each key of the collection's `map` MUST name a field or a to-one relation of the child, and MUST NOT name the child's key or its back-reference to the master, which is filled from the master the arrival creates. A value is an element key, `"."` — the element itself — or a lookup as above, whose `from` is an element key or `"."`. A collection MUST NOT combine `"."` with element keys, and MUST NOT contain a collection.
+
+Every element MUST be resolved before anything of the arrival is stored. The arrival MUST be rejected, with a diagnostic naming the collection and the element's position, when the key holds anything but an array, when an element is null or not of the declared shape (an object for element keys, a plain value for `"."`), when the array holds more than `max` elements, when an element lacks the key a lookup reads, or when an element lookup matches no record. A rejected arrival stores nothing.
+
+An absent or empty array creates no children. Elements are kept as sent: the construct removes no duplicate and promises no order.
+
+The master and its children MUST be stored as one atomic unit, each through its entity's ordinary write path: either every one of them is stored or none is, and a reaction to the master's creation MUST observe all of its children. A child the store refuses fails the whole arrival.
 :::
 
 ## outbound — departures on a queue or a topic
