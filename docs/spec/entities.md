@@ -50,6 +50,7 @@ fields:
 | `calculatedActionOnCreate` / `calculatedActionOnUpdate` | a server-side action call-out (see [Calculated fields](#calculated-fields)) |
 | `number` | turn a string field into a platform-numbered document field (see [Document numbering](#document-numbering)) |
 | `sensitive` | strip this field from scoped (personal / partner) surfaces (see [Scoped surfaces](/spec/surfaces)) |
+| `renamedFrom` | the field's former name: applying the file renames the stored column, so the values keep up with the rename (see [renamedFrom / dropped](#renamedfrom-dropped-evolving-a-table-that-already-holds-data)) |
 
 ### Logical types
 
@@ -75,6 +76,7 @@ Generators map each logical type to a physical column type. `text` is a large-ob
 | `imports:` | injects import lines into the generated data-access layer (pairs with calculated actions) |
 | `aggregate: true` | on a document master's numeric field, keeps it equal to the sum of the items' same-named field |
 | `kind: setting` | marks the entity as nomenclature / configuration (see [Setting entities](#setting-entities)) |
+| `dropped:` | former field / to-one relation names whose columns applying the file removes, data included (see [renamedFrom / dropped](#renamedfrom-dropped-evolving-a-table-that-already-holds-data)) |
 
 ### Control order
 
@@ -182,6 +184,47 @@ rejected, having no column on this side to constrain.
 A key naming a single field MUST be rejected, naming the field-level `unique` it duplicates.
 A name repeated within one key, and a key declared twice on one entity, MUST be rejected.
 An implementation is NOT required to add the constraint to a table that already exists.
+:::
+
+## renamedFrom / dropped — evolving a table that already holds data
+
+An entity's table outlives the version of the file that created it. Once the application holds
+data, renaming a field and retiring one look alike from the file alone - a name disappears and,
+for a rename, another appears - so the file says which it is:
+
+```yaml
+entities:
+  - name: Invoice
+    dropped: [legacyCode]
+    fields:
+      - { name: id, type: integer, primaryKey: true, generated: true }
+      - { name: issueDate, type: date, renamedFrom: invoiceDate }
+```
+
+`renamedFrom:` on a field names the field it was called before. Applying the file renames the
+stored column, so the existing values move with the new name instead of staying behind in the old
+column while the new field starts empty. It acts only while the old column exists and the new one
+does not, so it is harmless to leave in the file after the rename has run.
+
+`dropped:` on an entity lists former field and to-one relation names whose columns applying the
+file removes, data included. It is the explicit contract step of an expand/contract change: a field
+is first removed from the file - its column and values are kept - and dropped once nothing reads it
+any more.
+
+A field simply deleted from the file is **not** dropped: its column and its values are kept.
+
+::: info Normative
+Applying a file MUST NOT remove the stored column, or the values, of a field or to-one relation
+that the file no longer declares, unless its name is listed under the entity's `dropped:`; a name
+listed there MUST have its column removed, values included. For a field declaring `renamedFrom:`,
+while the column of the former name exists and the field's own does not, applying the file MUST
+make the former column's values readable under the field's name; once either condition no longer
+holds, `renamedFrom:` MUST have no effect.
+
+Each of the following MUST be reported as an authoring error: a `dropped:` name or a
+`renamedFrom:` source that the entity still declares as a field or a relation, compared by the
+column the name maps to; a field `renamedFrom` its own name; a `renamedFrom:` source also listed
+under `dropped:`; two fields `renamedFrom` the same name; and an empty name in either key.
 :::
 
 ## defaultValue — field defaults

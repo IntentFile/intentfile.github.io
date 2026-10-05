@@ -12,6 +12,8 @@ The quick lookup surface: one line and a minimal snippet per construct. For rule
 | [`entities`](/spec/entities) | tables + CRUD UI + a generated data layer & API |
 | [field / relation attributes](/spec/entities#fields) | uniqueness, layout, read-only, dropdown filtering, cascades |
 | [`entities.unique`](/spec/entities#unique-a-business-key-over-more-than-one-field) | a business key spanning more than one field or to-one relation |
+| [`renamedFrom`](/spec/entities#renamedfrom-dropped-evolving-a-table-that-already-holds-data) | a field's former name: the stored column is renamed in place, so the values move with the new name |
+| [`entities.dropped`](/spec/entities#renamedfrom-dropped-evolving-a-table-that-already-holds-data) | former field / to-one relation names whose columns are removed, data included - a field merely deleted from the file keeps its column |
 | [`visibleTo`](/spec/entities#role-scoped-field-visibility-visibleto) | an allow-list of roles that may read one field, enforced on the wire |
 | [`pattern`](/spec/entities#fields) | an input-format regular expression enforced in the UI and server-side |
 | [`defaultValue`](/spec/entities#defaultvalue-field-defaults) | a field default: column default, satisfies `required`, and seeds a new row in the UI |
