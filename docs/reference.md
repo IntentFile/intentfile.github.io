@@ -65,6 +65,7 @@ The quick lookup surface: one line and a minimal snippet per construct. For rule
 | [`generates.items.where`](/spec/glue#which-source-rows-become-lines-where-refuse) | which of the source document's rows become target lines - and what an unqualified one costs |
 | [`generates.event`](/spec/glue#event-driven-creation-event) | mint the document on a source event - a status write, a create, or a process step |
 | [`generates.event.mode`](/spec/glue#cardinality-mode-once-append) | one target per source (`once`, default) or one per delivered event (`append`) |
+| [`reversals`](/spec/glue#reversals-reverse-a-booked-document-red-storno) | a manual Reverse on a posted document - its negated twin, linked both ways |
 | [`resolves`](/spec/glue#resolves-fill-a-relation-from-a-register-valid-on-a-date) | fill a to-one from the register row valid on the record's date |
 | [`transitions`](/spec/glue#transitions-guarded-status-flips) | guarded on-demand status flips (void / cancel / reopen) |
 | [`postings`](/spec/glue#postings-source-document-to-ledger) | declarative source-document to balanced-document posting - on a status transition, on create for a lifecycle-less source, or on a declared enrichment phase |
@@ -176,7 +177,7 @@ reports:
     widget: { value: "sum(total)", at: { "month(orderDate)": now }, label: Revenue (this month) }
 ```
 
-### generates / transitions
+### generates / transitions / reversals
 
 ```yaml
 generates:
@@ -190,6 +191,9 @@ generates:
 
 transitions:
   - { name: VoidInvoice, forEntity: Invoice, from: [ISSUED, SENT], setStatus: VOIDED, when: "Paid == 0", label: Void, icon: ban }
+
+reversals:
+  - { name: reverseEntry, forEntity: JournalEntry, when: "Status == POSTED", link: Storno, backLink: ReversedBy, negate: [debit, credit] }
 ```
 
 ### seeds

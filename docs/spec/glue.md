@@ -702,6 +702,33 @@ Whether a replacement follows immediately is decided by the trigger's own `when:
 
 Prefer this over [`posts`](#posts-derived-rows-on-an-event) when the result is a document with line items — `posts` emits flat mapped rows and cannot reference the freshly created header. Prefer it over a button plus a [`wait`](/spec/processes#wait-park-the-process-on-a-data-event) step when the step is really waiting for a person to remember to click: an unclicked record parks its process instance indefinitely.
 
+## reversals — reverse a booked document (red storno)
+
+A manual **Reverse** on a posted document that has no source event to void — the hand-written journal entry. One action creates the document's **negated twin**: every line copied onto the same side with the declared amounts negated, the twin pointing at the original and the original at the twin, so the pair nets to zero and each record names the other. A document a [posting](#postings-source-document-to-ledger) created is reversed on its source's void instead.
+
+```yaml
+reversals:
+  - name: reverseEntry
+    forEntity: JournalEntry
+    when: "Status == POSTED"            # offered and accepted only in this status
+    label: Reverse
+    link: Storno                        # the twin's to-one to the original
+    backLink: ReversedBy                # optional: the original's to-one to its twin
+    negate: [debit, credit, currencyAmount]   # decimal fields of the header and/or its lines
+    defaults: { date: now }             # header values set instead of copied
+    refuse:
+      - { when: "ReversedBy != null", message: "This entry is already reversed" }
+      - { when: "Storno != null",     message: "A reversal cannot be reversed - reverse the original entry" }
+```
+
+**Normative.** A reversal is a [create-from](#generates-create-from) whose source and target are `forEntity`. It MUST create the twin, its lines and the back-link write as one atomic unit, through the same write path as any create of that entity, so its validations, its document numbering, its initial status, its processes and any date-based period lock all apply: a twin dated into a closed period MUST be rejected with nothing written. The twin MUST start at the entity's initial status rather than the original's.
+
+**Normative.** Every field and to-one of the header and of its line items MUST be copied as it stands, except the primary key, `unique` fields, numbered fields, calculated and aggregated fields, the status relation, a personal owner, `link`, `backLink`, the line's composition reference (which points at the twin) and every `defaults:` key. Each `negate` name MUST be a decimal field of the header or its lines and is copied negated, on the same side; a rate or a quantity that multiplies an amount is not negated.
+
+**Normative.** `link` and `backLink` MUST be to-ones of `forEntity` to itself. The back-link MUST be written on the original as a system write that a user-write immutability rule (`immutableWhen`) does not refuse; nothing else of the original changes.
+
+**Normative.** `when` MUST compare the entity's status relation with one status (a [status name](/spec/data#status-references-name-not-number) or its id); the action is offered in that status only and MUST be rejected in any other. Each `refuse` entry is a condition over the original's own fields and to-ones — one comparison or an ANDed list, `<field> ==|!= <value | null>` — and MUST reject the reversal with its `message`. Refusals MUST be decided under exclusive access to the original, so two concurrent reversals of one document cannot both pass them.
+
 ## resolves — fill a relation from a register valid on a date
 
 Set a to-one from the row of a **register** whose validity period covers a date the record carries. The register says "X applied to Y from A to B" — a vehicle assignment, a price list, a contract in force, an org assignment — and the record carries the match key(s) and the date:
