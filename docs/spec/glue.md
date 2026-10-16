@@ -429,6 +429,62 @@ A destination name in the model is a name the *application* owns. Whether two se
 
 Conversation-shaped transports — acknowledgement protocols, request-reply correlation, backoff policy — stay [beyond the boundary](/spec/#the-scope-boundary), as they are for an integration.
 
+## exports — a file in an exacting format over a query
+
+Every statutory filing an application must produce — a VAT ledger, a payroll declaration, an annual return — and every feed into a third-party ledger is the same shape: **a file in an exacting format over a query**. `exports` declares one, so a format is data rather than a hand-written writer per format per country.
+
+```yaml
+entities:
+  - name: ExportRun                # the run ledger: declared with no fields of its own
+
+exports:
+  - name: VatPurchaseLedger
+    source: PurchaseInvoice        # an entity, or a report of the same model
+    format: fixedWidth             # fixedWidth | delimited | xml
+    encoding: windows-1251         # UTF-8 when omitted
+    ledger: ExportRun
+    fileName: "VAT-{fromDate}.txt"
+    orderBy: [documentDate, number]
+    parameters:
+      - { name: fromDate, field: documentDate, op: ge, required: true }
+      - { name: toDate,   field: documentDate, op: le }
+    records:
+      - type: header               # once, before the rows
+        fields:
+          - { literal: 'H', width: 1 }
+          - { param: fromDate, width: 8, pattern: ddMMyyyy }
+      - type: line                 # once per row
+        fields:
+          - { from: supplier.vatNumber, width: 15 }
+          - { from: documentDate, width: 8, pattern: ddMMyyyy }
+          - { from: taxBase, width: 15, scale: 2, align: right, pad: '0' }
+      - type: trailer              # once, after the rows
+        fields:
+          - { literal: 'TOTAL', width: 5 }
+          - { from: count(), width: 6, align: right, pad: '0' }
+          - { from: sum(taxBase), width: 15, scale: 2, align: right }
+```
+
+A field takes its value from exactly one of `from:` — a field of the source, a one-hop `relation.field`, or a total over the rows, `sum(x)` / `count()` — `literal:` or `param:`, and says how it is written: a decimal `scale` (with a `decimalSeparator`, empty for an implied point), a date `pattern`, and for a positional file its `width`, `align`, `pad` and whether a longer value is `truncate`d. A delimited file takes a `delimiter`, a `quote` and `quoting: minimal | all`; an XML document a `root`, an `element` per record and a `name` (or `attribute: true`) per field.
+
+Over a **report**, a field names one of the report's declared dimensions or measures exactly as the report declares it, a total over a measure is a sum of it (`sum(sum(taxBase))`), and a parameter names one of the report's own parameters. Over an **entity**, a parameter filters a field by `op` (`eq` `ne` `gt` `ge` `lt` `le`), and `orderBy` fixes the order of the rows.
+
+An export is offered two ways — as a **download** that answers the file, and as a function a scheduled job or extension code calls — and **every run is recorded on the ledger**: which export, its parameters, the stored file, a checksum of it, how many rows it wrote, who ran it and when, and how it ended.
+
+::: info Normative
+Every reference an export makes — a field, a hop, a report column, a parameter, a `fileName` token, the ledger — MUST be resolved when the model is read, and an unresolvable one MUST be reported as an authoring error. A header or a trailer is written once, so a field of one MUST NOT read a row value; it reads literals, parameters and totals.
+
+Nothing is written approximately. A value wider than its positional field (unless the field truncates), a character the declared encoding cannot represent, or one the format does not allow MUST fail the run rather than be replaced, shifted or dropped — a filing with a silently substituted character is rejected by its recipient long after the run reported success.
+
+A run that fails MUST be recorded on the ledger with its reason, and its file MUST NOT remain stored. A run refused for a missing or unreadable parameter fails before anything is produced and records nothing.
+
+The rows of an entity source MUST be written in a deterministic order: the declared `orderBy`, or the primary key.
+:::
+
+Who may run an export is an ordinary [permission](/spec/surfaces#permissions) on its name, read access being the right to obtain the file.
+
+The **signed submission** of the file to an authority — a qualified signature, the upload, the receipt recorded on the run, the correction file a re-export of a filed period produces — is the construct's planned second step and is not part of it yet. Structures beyond header, line and trailer records — nested hierarchies, several row sets in one file, validation against a schema — stay outside it for now.
+
 ## rollups — denormalised parent totals
 
 ```yaml
