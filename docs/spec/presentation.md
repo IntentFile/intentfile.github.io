@@ -94,7 +94,7 @@ A parameter is bound on **every** read, so `initial` is what makes the untouched
 
 A row holding no value in the target column is still in the report while the input is empty; once a value is set, that row is outside the filter. A `timestamp` target is compared as a date, so a `le` bound includes the whole day chosen.
 
-The target is a **field**: a relation itself is not one (name a field of it), and boolean and long-text fields are not parameterizable. A balance report declares its own `fromDate`/`toDate` window and may add further parameters, but not redeclare those two.
+The target is a **field**: a relation itself is not one (name a field of it), and boolean and long-text fields are not parameterizable. A balance report declares its own `fromDate`/`toDate` window and may add further parameters, but not redeclare those two; a ledger report additionally declares its `account`.
 
 ### Chart
 
@@ -124,6 +124,32 @@ reports:
     dimensions: [account.code, account.name]
     filter: "journalEntry.status == 2"
 ```
+
+### ledger reports
+
+`kind: ledger` lists the posted lines of ONE account in date order with a running balance - the account analysis (account card). It reads the same ledger as a balance report and adds the account to list and the per-line columns:
+
+```yaml
+reports:
+  - name: AccountAnalysis
+    kind: ledger
+    source: JournalEntryItem
+    date: journalEntry.entryDate
+    debit: debit
+    credit: credit
+    account: account                    # the to-one relation to the account, chosen at runtime
+    columns: [journalEntry.number, journalEntry.reason, Customer, note]
+    correspondence: account.code        # optional: each line's counter-side accounts
+    filter: "journalEntry.status == 2"
+```
+
+The rows are an opening row (the balance of everything strictly before the From date), the lines of the window ordered by date, entry and line - each with its debit, its credit and the running balance (the opening balance plus the running sum of debit minus credit) - and a closing row carrying the window's debit and credit turnover and the closing balance. The windows are the balance report's, so for any account opening + debit - credit = closing, and a conforming implementation MUST produce the same opening and closing balance a `kind: balance` report produces for that account and window.
+
+The account is a runtime parameter (the account's key) declared by the report itself, beside the From/To window; with no account chosen the report is empty. When the account entity declares a `hierarchy`, a group account lists the lines of every account below it at any depth, so a group's balance equals the sum of its leaves'. The running balance is a property of the whole window: an implementation that pages the lines MUST give every page the running balance computed over all earlier lines, not restart it per page.
+
+`columns` resolve like dimensions (a field of the source, a one-hop `relation.field`, or a to-one relation shown by its label). `correspondence` names, per line, the distinct accounts on the opposite side of the same entry.
+
+A ledger report MUST name `account` as a to-one relation of the source, its source MUST have a primary key, and it MUST NOT declare dimensions, measures, statement lines, a chart or a dashboard widget.
 
 ### Dashboard KPI widgets
 
