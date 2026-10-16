@@ -1,6 +1,6 @@
 ---
 title: Declarative glue
-description: notifications, schedules, integrations, inbound arrivals (webhook, message, file), outbound departures, roll-ups, keyed aggregates, settlements, expansions, resolves, generates, transitions, postings and event-driven row posting - declared in the intent, generated as integration code, never hand-written.
+description: notifications, schedules, integrations, inbound arrivals (webhook, message, file), file imports (CSV, MT940, camt.053), outbound departures, roll-ups, keyed aggregates, settlements, expansions, resolves, generates, transitions, postings and event-driven row posting - declared in the intent, generated as integration code, never hand-written.
 ---
 
 # Declarative glue
@@ -386,6 +386,46 @@ That is why a `folder` source requires its `cron` (and why a `cron` is an error 
 :::
 
 Conversation-shaped transports — acknowledgements, retries with backoff, certificates — stay [beyond the boundary](/spec/#the-scope-boundary): they have state and failure semantics no one-line declaration should pretend to carry.
+
+## imports — a file uploaded into rows
+
+`inbound` takes a record another system sends. `imports` takes a **file** a person brings — a bank statement, a price list, another system's export — and makes each of its records a row of an entity. Three formats are defined: delimited text (`csv`) read by declared locale rules, the SWIFT customer statement `mt940`, and the ISO 20022 bank-to-customer statement `camt053`.
+
+```yaml
+imports:
+  - name: bankCsv
+    into: StatementLine            # the entity whose rows the file becomes
+    format: csv                    # csv | mt940 | camt053
+    encoding: windows-1251         # csv / mt940; default UTF-8 (camt053 declares its own)
+    csv:                           # csv only; every key optional
+      separator: ";"               # default ","
+      decimal: ","                 # default "."
+      grouping: "."                # default none
+      dateFormat: dd.MM.yyyy       # default yyyy-MM-dd
+      skipLines: 1                 # lines before the header
+    map:                           # <entity field>: <source>
+      statementId: _file           # the file's name
+      lineNumber:  _line           # the record's position in the file
+      bookedOn:    Date            # a header column
+      amount:      Amount
+    duplicateKey: [statementId, lineNumber]
+  - name: swift
+    into: StatementLine
+    format: mt940
+    map: { statementId: statementId, lineNumber: lineNumber, bookedOn: valueDate, amount: amount }
+    duplicateKey: [statementId, lineNumber]
+```
+
+A `csv` source is a header column, or a 1-based column position under `csv: { header: false }`. An `mt940` or `camt053` file is read into one record per statement line, and both formats share one vocabulary: `statementId`, `sequence`, `account`, `currency`, `lineNumber` (counted from 1 in each statement), `valueDate`, `bookingDate`, `mark` (`C` / `D`), `amount` (signed — a debit is negative), `transactionType`, `reference`, `bankReference` and `details`; `mt940` adds `supplementary`, `camt053` adds `counterpartyName` and `counterpartyAccount`. `_line` and `_file` are sources of every format.
+
+An import offers an **upload** to the users who may write the entity's rows, and an operation a scheduled job can call with a file it fetched itself. Its semantics:
+
+- **Whole or nothing.** Every record is read and converted, and the `duplicateKey` checked against the rows already imported and against the file's other records, before any row is written — and then all of them are written in one transaction. An unreadable value rejects the file; a repeated key refuses it as a duplicate; either way nothing is written, so importing the same statement twice is harmless.
+- **Strict reading.** Bytes that are not valid in the declared encoding reject the file rather than being replaced, and a number using a separator the rules do not declare rejects it rather than being guessed.
+- **A ledger.** Every attempt — imported, duplicate or rejected — is recorded against the entity: the file's name and checksum, the number of records written, the outcome and its reason, who and when.
+- **A hook after the import.** Rules that act on the imported rows — matching statement lines to open invoices — are logic, not intent: a conforming generator offers an extension point called with the rows once they are committed, whose failure does not undo the import.
+
+An import fills **fields only**: its target is an entity of the same model that is not a composition child and has no required to-one relation; `map` names fields (never the generated primary key) and covers every required field without a default; `duplicateKey` lists mapped fields. Each of these is an error at generation, not at the first upload.
 
 ## outbound — departures on a queue or a topic
 

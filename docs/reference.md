@@ -57,6 +57,7 @@ The quick lookup surface: one line and a minimal snippet per construct. For rule
 | [`schedules`](/spec/glue#schedules) | cron: notify or generate records per matching row; `where` values may be moments relative to the firing |
 | [`integrations`](/spec/glue#integrations-outbound-http) | outbound HTTP on a data change |
 | [`inbound`](/spec/glue#inbound-arrivals-from-outside) | records arriving from outside: a webhook, a queue/topic message, a dropped file |
+| [`imports`](/spec/glue#imports-a-file-uploaded-into-rows) | an uploaded file (CSV with locale rules, MT940, camt.053) read into rows, whole or not at all, refused when it repeats a duplicate key |
 | [`outbound`](/spec/glue#outbound-departures-on-a-queue-or-a-topic) | a record emitted on a queue or a topic when an event fires |
 | [`rollups`](/spec/glue#rollups-denormalised-parent-totals) | counts, sums, balance + status maintenance |
 | [`settlements`](/spec/glue#settlements-payment-allocation) | auto-allocation of payments across open invoices |
