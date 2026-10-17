@@ -64,6 +64,7 @@ The quick lookup surface: one line and a minimal snippet per construct. For rule
 | [`inbound`](/spec/glue#inbound-arrivals-from-outside) | records arriving from outside: a webhook, a queue/topic message, a dropped file |
 | [`inbound.accept` / `inbound.map`](/spec/glue#reading-an-arrival-as-an-envelope-accept-map) | read an arrival as an envelope: gate on its type and version, map its keys onto the record, resolve a business key to a relation |
 | [`inbound.map` collections](/spec/glue#an-envelope-array-as-composition-children-collections) | an envelope array becomes the composition children of the created record, stored with it as one unit |
+| [`imports`](/spec/glue#imports-a-file-uploaded-into-rows) | an uploaded file (CSV with locale rules, MT940, camt.053) read into rows, whole or not at all, refused when it repeats a duplicate key |
 | [`outbound`](/spec/glue#outbound-departures-on-a-queue-or-a-topic) | a record emitted on a queue or a topic when an event fires |
 | [`exports`](/spec/glue#exports-a-file-in-an-exacting-format-over-a-query) | a fixed-width, delimited or XML file over an entity or a report, every run recorded on a ledger entity |
 | [`rollups`](/spec/glue#rollups-denormalised-parent-totals) | counts, sums, balance + status maintenance |
