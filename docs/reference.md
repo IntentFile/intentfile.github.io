@@ -65,6 +65,7 @@ The quick lookup surface: one line and a minimal snippet per construct. For rule
 | [`inbound.accept` / `inbound.map`](/spec/glue#reading-an-arrival-as-an-envelope-accept-map) | read an arrival as an envelope: gate on its type and version, map its keys onto the record, resolve a business key to a relation |
 | [`inbound.map` collections](/spec/glue#an-envelope-array-as-composition-children-collections) | an envelope array becomes the composition children of the created record, stored with it as one unit |
 | [`outbound`](/spec/glue#outbound-departures-on-a-queue-or-a-topic) | a record emitted on a queue or a topic when an event fires |
+| [`exports`](/spec/glue#exports-a-file-in-an-exacting-format-over-a-query) | a fixed-width, delimited or XML file over an entity or a report, every run recorded on a ledger entity |
 | [`rollups`](/spec/glue#rollups-denormalised-parent-totals) | counts, sums, balance + status maintenance |
 | [`settlements`](/spec/glue#settlements-payment-allocation) | auto-allocation of payments across open invoices |
 | [`expansions`](/spec/glue#expansions-child-rows-from-a-date-span) | generated child rows per day / week / month |
