@@ -30,6 +30,7 @@ The quick lookup surface: one line and a minimal snippet per construct. For rule
 | [`hierarchy` / `leafOnly`](/spec/entities#hierarchy-leafonly-tree-entities) | tree entities, leaf-only references |
 | [calculated fields](/spec/entities#calculated-fields) | server + UI-evaluated expressions, date helpers, call-outs |
 | [`relations` / `composition`](/spec/relations#relations) | associations and master-detail compositions |
+| [`relations` / `pickable`](/spec/relations#which-target-rows-a-picker-offers-pickable) | which target rows a to-one's picker offers: a failing row listed disabled with a message, or left out |
 | [`relations` / `whenMasterDeleted`](/spec/relations#deleting-the-master-whenmasterdeleted) | whether deleting a master deletes the composition children it owns, or is refused while they exist |
 | [`uses`](/spec/relations#multi-model-applications) | reuse entities owned by another intent model |
 | [`related`](/spec/relations#related) | a read-only register of the records referencing this entity, on its own page |
@@ -103,6 +104,7 @@ entities:
 - { name: Status,  kind: manyToOne, to: OrderStatus, function: EntityStatus, init: 1 }
 - { name: City,    kind: manyToOne, to: City, dependsOn: { relation: Country, filterBy: Country } }
 - { name: Product, kind: manyToOne, to: Product, where: { Type: 1 } }
+- { name: Customer, kind: manyToOne, to: Customer, pickable: { when: [registrationNumber != null, address != null], message: "Registration data incomplete" } }
 - { name: tags,    kind: manyToMany, to: Tag, through: OrderTag }   # link entity, named
 ```
 
