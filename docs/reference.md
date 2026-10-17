@@ -48,7 +48,7 @@ The quick lookup surface: one line and a minimal snippet per construct. For rule
 | [`actions`](/spec/processes#actions-custom-buttons) | developer-defined buttons opening custom pages |
 | [`view`](/spec/presentation#view-calendar-range-slots) | an additional calendar / range page, or a slot-booking page |
 | [`documentItemsLayout: chat`](/spec/presentation#documentitemslayout-chat-conversation-threads) | render a document's items as a chat thread |
-| [`reports`](/spec/presentation#reports) | aggregations, charts, dashboard KPI tiles, balance reports, financial and cash-flow statements, user-set parameters |
+| [`reports`](/spec/presentation#reports) | aggregations, charts, dashboard KPI tiles, balance and ledger reports, financial and cash-flow statements, user-set parameters |
 | [`scope`](/spec/presentation#lifecycle-scope) | which lifecycle rows an aggregating report counts |
 | [`widgets`](/spec/presentation#widgets-custom-dashboard-tiles) | custom KPI / embedded-page dashboard tiles |
 | [`notify.forEach`](/spec/glue#one-message-per-related-row-foreach) | fan the block out over a related collection: one message per row, every bare path resolved against the row |
