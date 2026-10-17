@@ -125,6 +125,57 @@ reports:
     filter: "journalEntry.status == 2"
 ```
 
+### statement reports
+
+`kind: statement` reads the same signed ledger as a balance report, but its rows are the **fixed lines of a statutory form** — a balance sheet, an income statement — where every line is a formula over the chart of accounts and some lines are subtotals of others. It yields three columns, code, label and amount, over the same runtime From/To window:
+
+```yaml
+reports:
+  - name: BalanceSheet
+    kind: statement
+    source: JournalEntryItem
+    date: journalEntry.entryDate
+    debit: debit
+    credit: credit
+    account: account.code              # the account CODE the lines select on (a string field)
+    filter: "journalEntry.status == 2"
+    lines:
+      - { code: A.I,  label: Fixed assets, accounts: "20*,21*", measure: closingNetDebit }
+      - { code: A.II, label: Receivables,  accounts: "41*",     measure: closingNetDebit }
+      - { code: A,    label: Total assets, sum: [A.I, A.II] }
+      - { code: B.I,  label: Payables,     accounts: "40-49",   measure: closingNetCredit }
+      - { code: B,    label: Net assets,   sum: [A], less: [B.I] }
+```
+
+A line either reads the ledger (`accounts` + `measure`) or is arithmetic over other lines by `code` (`sum` adds, `less` subtracts) — never both, since the same amount would count twice. Codes are unique, references resolve, and the reference graph is acyclic. The `accounts` selector is comma-separated over the account code: `20*` a prefix, `4110` one account, `60-69` an inclusive range of **equally long code prefixes** (it selects `601` and `6999`). The `measure` is `opening` / `period` / `closing` × `Debit` / `Credit` / `NetDebit` / `NetCredit`; a `Net` measure nets each account's two sides **before** the line sums it, which is what files a both-type settlement account under assets when it is in debit and under liabilities when it is in credit. A statement declares no `dimensions` and no `measures`: its rows are its lines, in the authored order.
+
+#### The cash-flow statement — `cashAccounts`
+
+The direct-method cash-flow statement classifies cash movements by their **counter-side**: receipts from customers are the credits to the receivable accounts in entries that debit cash. `cashAccounts` (the selector grammar above) names the cash accounts and puts the statement on the **cash basis**, with the same `lines` / `sum` / `less`:
+
+```yaml
+reports:
+  - name: CashFlow
+    kind: statement
+    source: JournalEntryItem
+    date: journalEntry.entryDate
+    debit: debit
+    credit: credit
+    account: account.code
+    cashAccounts: "50*"
+    lines:
+      - { code: A.1, label: Receipts from customers, accounts: "41*", measure: periodCredit }
+      - { code: A.2, label: Payments to suppliers,   accounts: "40*", measure: periodDebit }
+      - { code: A,   label: Operating activities,    sum: [A.1], less: [A.2] }
+      - { code: B.1, label: Purchases of equipment,  accounts: "20*", measure: periodDebit }
+      - { code: B,   label: Investing activities,    less: [B.1] }
+      - { code: C.1, label: Borrowings,              accounts: "15*", measure: periodCredit }
+      - { code: C,   label: Financing activities,    sum: [C.1] }
+      - { code: N,   label: Net cash flow,           sum: [A, B, C] }
+```
+
+On the cash basis a leaf line's accounts are counter-accounts: `periodCredit` is the cash received from them, `periodDebit` the cash paid to them. Each posting of an entry touching a cash account MUST be attributed its proportional share of that entry's cash movement over the **whole** counter side — the cash debited, spread over the entry's credit side by amount, and the cash credited, spread over its debit side. Over a balanced entry the non-cash shares then add up to exactly the entry's net cash movement, so **operating + investing + financing equals the change in the cash accounts' balance for the window**; a generator MUST preserve that reconciliation. A transfer between two cash accounts is no cash flow, and an entry touching no cash account contributes nothing. Only the `period*` measures are valid on the cash basis (a cash flow is a movement within the window), and `date` MUST reach the entry through a to-one relation (`<relation>.<field>`), since the cash an entry moved is a fact about the entry. Anything else is an authoring error.
+
 ### ledger reports
 
 `kind: ledger` lists the posted lines of ONE account in date order with a running balance - the account analysis (account card). It reads the same ledger as a balance report and adds the account to list and the per-line columns:

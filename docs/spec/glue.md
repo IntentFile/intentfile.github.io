@@ -1,6 +1,6 @@
 ---
 title: Declarative glue
-description: notifications, schedules, integrations, inbound arrivals (webhook, message, file), outbound departures, roll-ups, keyed aggregates, settlements, expansions, resolves, generates, transitions, postings and event-driven row posting - declared in the intent, generated as integration code, never hand-written.
+description: notifications, schedules, integrations, inbound arrivals (webhook, message, file), file imports (CSV, MT940, camt.053), outbound departures, roll-ups, keyed aggregates, settlements, expansions, resolves, generates, transitions, postings and event-driven row posting - declared in the intent, generated as integration code, never hand-written.
 ---
 
 # Declarative glue
@@ -387,6 +387,109 @@ That is why a `folder` source requires its `cron` (and why a `cron` is an error 
 
 Conversation-shaped transports — acknowledgements, retries with backoff, certificates — stay [beyond the boundary](/spec/#the-scope-boundary): they have state and failure semantics no one-line declaration should pretend to carry.
 
+### Reading an arrival as an envelope — `accept` / `map`
+
+An arrival may declare how its payload is **read**. Without these keys the payload is the record; with them it is an envelope, which is what an integration contract normally is.
+
+```yaml
+inbound:
+  - name: orders
+    source: { queue: orders }
+    accept: { type: order.placed, version: 1 }   # anything else: acknowledged and ignored
+    create: Order
+    map:
+      orderNumber: orderNumber                    # property <- envelope key
+      customer:    { lookup: Customer, by: code, from: customerCode }   # business key -> relation
+```
+
+`accept` gates the arrival on the envelope keys it names. `map` fills a property of `create` from an envelope key, or — given `{ lookup, by, from }` — from the record of another entity that a **business key** identifies: the envelope carries a name, the entity stores a reference.
+
+::: info Normative
+`accept` and `map` are independent, both optional, and both valid on every arrival — they describe the payload, not the transport. An arrival declaring neither behaves exactly as one specified before them.
+
+A message matching every key of `accept` is ingested. A message that does not match MUST be acknowledged and ignored, with a diagnostic; it MUST NOT be failed, since redelivery cannot change the outcome. `accept` values are scalars.
+
+Each key of `map` MUST name a field or a to-one relation of `create`, or — as a collection, below — a one-to-many relation of `create` whose target is a composition child of it; the entity's key MUST NOT be mapped, being assigned on creation. A value is an envelope key, or a lookup declaring exactly `lookup`, `by` and `from`. A lookup MUST fill a to-one relation, `lookup` MUST name that relation's target, and `by` MUST name a field of the target that identifies at most one record — a field declared unique, or the target's key — and one that a business key can travel as, namely text or an integer. A generator MUST refuse a `by` that does not, rather than resolve a lookup that could match several records.
+
+A lookup matching exactly one record fills the relation. A lookup matching none MUST reject the arrival, reporting the unresolved value; it MUST NOT store the record with the relation unset. A key declared with no value at all — in either block — MUST be reported as an authoring error rather than read as an empty one.
+
+A mapped record MUST be saved through the entity's ordinary write path, exactly as an unmapped one is: mapping changes what the record is built from, never how it is stored.
+:::
+
+#### An envelope array as composition children — collections
+
+An envelope often carries a set: an order with its lines, a request with the items it applies to. A `map` key naming a one-to-many relation of `create` whose target is a composition child takes a **collection**, and the array becomes the master's children — one child per element, stored with the master as one unit.
+
+```yaml
+inbound:
+  - name: orders
+    source: { queue: orders }
+    create: Order
+    map:
+      orderNumber: orderNumber
+      lines:
+        from: lines
+        max: 100
+        map:
+          quantity: qty
+          product:  { lookup: Product, by: sku, from: sku }
+      tags: { from: tags, map: { label: "." } }
+```
+
+`from` names the envelope key holding the array, `map` fills one child from one element, and `"."` is the element itself, for an array of plain values.
+
+::: info Normative
+A collection declares exactly `from` and `map`, and optionally `max`. Its key MUST name a one-to-many relation of `create` whose target is a composition child of `create`, declared in the same model; at most one collection of an arrival fills a given child entity. `from` names an envelope key and MUST NOT be `"."`. `max`, when declared, is a whole number from 1 to 10 000.
+
+Each key of the collection's `map` MUST name a field or a to-one relation of the child, and MUST NOT name the child's key or its back-reference to the master, which is filled from the master the arrival creates. A value is an element key, `"."` — the element itself — or a lookup as above, whose `from` is an element key or `"."`. A collection MUST NOT combine `"."` with element keys, and MUST NOT contain a collection.
+
+Every element MUST be resolved before anything of the arrival is stored. The arrival MUST be rejected, with a diagnostic naming the collection and the element's position, when the key holds anything but an array, when an element is null or not of the declared shape (an object for element keys, a plain value for `"."`), when the array holds more than `max` elements, when an element lacks the key a lookup reads, or when an element lookup matches no record. A rejected arrival stores nothing.
+
+An absent or empty array creates no children. Elements are kept as sent: the construct removes no duplicate and promises no order.
+
+The master and its children MUST be stored as one atomic unit, each through its entity's ordinary write path: either every one of them is stored or none is, and a reaction to the master's creation MUST observe all of its children. A child the store refuses fails the whole arrival.
+:::
+
+## imports — a file uploaded into rows
+
+`inbound` takes a record another system sends. `imports` takes a **file** a person brings — a bank statement, a price list, another system's export — and makes each of its records a row of an entity. Three formats are defined: delimited text (`csv`) read by declared locale rules, the SWIFT customer statement `mt940`, and the ISO 20022 bank-to-customer statement `camt053`.
+
+```yaml
+imports:
+  - name: bankCsv
+    into: StatementLine            # the entity whose rows the file becomes
+    format: csv                    # csv | mt940 | camt053
+    encoding: windows-1251         # csv / mt940; default UTF-8 (camt053 declares its own)
+    csv:                           # csv only; every key optional
+      separator: ";"               # default ","
+      decimal: ","                 # default "."
+      grouping: "."                # default none
+      dateFormat: dd.MM.yyyy       # default yyyy-MM-dd
+      skipLines: 1                 # lines before the header
+    map:                           # <entity field>: <source>
+      statementId: _file           # the file's name
+      lineNumber:  _line           # the record's position in the file
+      bookedOn:    Date            # a header column
+      amount:      Amount
+    duplicateKey: [statementId, lineNumber]
+  - name: swift
+    into: StatementLine
+    format: mt940
+    map: { statementId: statementId, lineNumber: lineNumber, bookedOn: valueDate, amount: amount }
+    duplicateKey: [statementId, lineNumber]
+```
+
+A `csv` source is a header column, or a 1-based column position under `csv: { header: false }`. An `mt940` or `camt053` file is read into one record per statement line, and both formats share one vocabulary: `statementId`, `sequence`, `account`, `currency`, `lineNumber` (counted from 1 in each statement), `valueDate`, `bookingDate`, `mark` (`C` / `D`), `amount` (signed — a debit is negative), `transactionType`, `reference`, `bankReference` and `details`; `mt940` adds `supplementary`, `camt053` adds `counterpartyName` and `counterpartyAccount`. `_line` and `_file` are sources of every format.
+
+An import offers an **upload** to the users who may write the entity's rows, and an operation a scheduled job can call with a file it fetched itself. Its semantics:
+
+- **Whole or nothing.** Every record is read and converted, and the `duplicateKey` checked against the rows already imported and against the file's other records, before any row is written — and then all of them are written in one transaction. An unreadable value rejects the file; a repeated key refuses it as a duplicate; either way nothing is written, so importing the same statement twice is harmless.
+- **Strict reading.** Bytes that are not valid in the declared encoding reject the file rather than being replaced, and a number using a separator the rules do not declare rejects it rather than being guessed.
+- **A ledger.** Every attempt — imported, duplicate or rejected — is recorded against the entity: the file's name and checksum, the number of records written, the outcome and its reason, who and when.
+- **A hook after the import.** Rules that act on the imported rows — matching statement lines to open invoices — are logic, not intent: a conforming generator offers an extension point called with the rows once they are committed, whose failure does not undo the import.
+
+An import fills **fields only**: its target is an entity of the same model that is not a composition child and has no required to-one relation; `map` names fields (never the generated primary key) and covers every required field without a default; `duplicateKey` lists mapped fields. Each of these is an error at generation, not at the first upload.
+
 ## outbound — departures on a queue or a topic
 
 The mirror of `inbound`: the application **raises a business event** for something outside it, on a message channel rather than over HTTP.
@@ -429,6 +532,62 @@ A destination name in the model is a name the *application* owns. Whether two se
 
 Conversation-shaped transports — acknowledgement protocols, request-reply correlation, backoff policy — stay [beyond the boundary](/spec/#the-scope-boundary), as they are for an integration.
 
+## exports — a file in an exacting format over a query
+
+Every statutory filing an application must produce — a VAT ledger, a payroll declaration, an annual return — and every feed into a third-party ledger is the same shape: **a file in an exacting format over a query**. `exports` declares one, so a format is data rather than a hand-written writer per format per country.
+
+```yaml
+entities:
+  - name: ExportRun                # the run ledger: declared with no fields of its own
+
+exports:
+  - name: VatPurchaseLedger
+    source: PurchaseInvoice        # an entity, or a report of the same model
+    format: fixedWidth             # fixedWidth | delimited | xml
+    encoding: windows-1251         # UTF-8 when omitted
+    ledger: ExportRun
+    fileName: "VAT-{fromDate}.txt"
+    orderBy: [documentDate, number]
+    parameters:
+      - { name: fromDate, field: documentDate, op: ge, required: true }
+      - { name: toDate,   field: documentDate, op: le }
+    records:
+      - type: header               # once, before the rows
+        fields:
+          - { literal: 'H', width: 1 }
+          - { param: fromDate, width: 8, pattern: ddMMyyyy }
+      - type: line                 # once per row
+        fields:
+          - { from: supplier.vatNumber, width: 15 }
+          - { from: documentDate, width: 8, pattern: ddMMyyyy }
+          - { from: taxBase, width: 15, scale: 2, align: right, pad: '0' }
+      - type: trailer              # once, after the rows
+        fields:
+          - { literal: 'TOTAL', width: 5 }
+          - { from: count(), width: 6, align: right, pad: '0' }
+          - { from: sum(taxBase), width: 15, scale: 2, align: right }
+```
+
+A field takes its value from exactly one of `from:` — a field of the source, a one-hop `relation.field`, or a total over the rows, `sum(x)` / `count()` — `literal:` or `param:`, and says how it is written: a decimal `scale` (with a `decimalSeparator`, empty for an implied point), a date `pattern`, and for a positional file its `width`, `align`, `pad` and whether a longer value is `truncate`d. A delimited file takes a `delimiter`, a `quote` and `quoting: minimal | all`; an XML document a `root`, an `element` per record and a `name` (or `attribute: true`) per field.
+
+Over a **report**, a field names one of the report's declared dimensions or measures exactly as the report declares it, a total over a measure is a sum of it (`sum(sum(taxBase))`), and a parameter names one of the report's own parameters. Over an **entity**, a parameter filters a field by `op` (`eq` `ne` `gt` `ge` `lt` `le`), and `orderBy` fixes the order of the rows.
+
+An export is offered two ways — as a **download** that answers the file, and as a function a scheduled job or extension code calls — and **every run is recorded on the ledger**: which export, its parameters, the stored file, a checksum of it, how many rows it wrote, who ran it and when, and how it ended.
+
+::: info Normative
+Every reference an export makes — a field, a hop, a report column, a parameter, a `fileName` token, the ledger — MUST be resolved when the model is read, and an unresolvable one MUST be reported as an authoring error. A header or a trailer is written once, so a field of one MUST NOT read a row value; it reads literals, parameters and totals.
+
+Nothing is written approximately. A value wider than its positional field (unless the field truncates), a character the declared encoding cannot represent, or one the format does not allow MUST fail the run rather than be replaced, shifted or dropped — a filing with a silently substituted character is rejected by its recipient long after the run reported success.
+
+A run that fails MUST be recorded on the ledger with its reason, and its file MUST NOT remain stored. A run refused for a missing or unreadable parameter fails before anything is produced and records nothing.
+
+The rows of an entity source MUST be written in a deterministic order: the declared `orderBy`, or the primary key.
+:::
+
+Who may run an export is an ordinary [permission](/spec/surfaces#permissions) on its name, read access being the right to obtain the file.
+
+The **signed submission** of the file to an authority — a qualified signature, the upload, the receipt recorded on the run, the correction file a re-export of a filed period produces — is the construct's planned second step and is not part of it yet. Structures beyond header, line and trailer records — nested hierarchies, several row sets in one file, validation against a schema — stay outside it for now.
+
 ## rollups — denormalised parent totals
 
 ```yaml
@@ -445,7 +604,9 @@ Roll-ups are recompute-on-event (self-healing), so they are **eventually consist
 
 Every roll-up recomputes on the child's **create, update and delete**, whatever its `op` reduces the children to - the event set belongs to the construct, not to the aggregation. The update pass is what a plain counter needs most: a child changes parents by an ordinary edit of its own parent relation. Moving a child to another parent - an edit of its `via` relation and nothing else - leaves BOTH parents right: the parent that received the child recomputes, and so does the parent it left, which does not go on counting a child that is no longer its own. That holds however the relation was written, including by a process step's field setter or a task form, which write one column and raise no ordinary change event.
 
-The parent may be owned by **another model**. When the roll-up's `via` relation is a cross-model reference, the child stays local - it owns the event that drives the recompute - while the parent's coordinates come from the owner's model, so a time-tracking model can maintain an `actualHours` total on a project the projects model owns. The referenced model must be declared in `uses`, and the parent field is validated against the owner's model at generation time; an unresolvable roll-up is reported rather than dropped silently. The `capacity` / `balance` / `status` variants stay local-only, since they read the parent's own limit and status values.
+The parent may be owned by **another model**. When the roll-up's `via` relation is a cross-model reference, the child stays local - it owns the event that drives the recompute - while the parent's coordinates come from the owner's model, so a time-tracking model can maintain an `actualHours` total on a project the projects model owns. The referenced model must be declared in `uses`, and the parent's `field`, `capacity` and `balance` are validated against the owner's model at generation time; an unresolvable roll-up is reported rather than dropped silently.
+
+`capacity` and `balance` work on a cross-model parent, overdraw check included: the capacity is read off the parent, the balance is written alongside the sum, and the check that refuses a child row overdrawing the parent belongs to the child, which is local on this direction. That is what lets both sides of an n:m allocation be guarded from the module that owns the link rows - an invoice cannot be paid past its payable, and the payment it is paid from cannot be applied past its amount. A `balance` declared without a `capacity` is refused (the balance is `capacity - sum`). Only `status` stays local-only: it moves the parent through the owner's own status values.
 
 ## aggregates — keyed cross-entity totals
 
@@ -584,6 +745,39 @@ With it, an unqualified row refuses the whole create-from with the authored mess
 
 The rule belongs to the mirror form of `items:`. The computed form — `items` as a list of synthetic lines over the source record — has no source rows to select from and guards each line with its own `when` cell. An `items` block that declares no `where:` behaves exactly as it did.
 
+### Recorded from the document it settles — `prompt:` and `link:`
+
+Some targets are recorded *from* a document and belong to it: a payment entered on the invoice it pays. Two things make that one action rather than two.
+
+`prompt:` asks for what the source cannot supply — which method, which reference, how much — before the target is created. Each entry names a field or a to-one relation of the **target**; `required: true` refuses the action without it, and `default:` names a property of the **source** the input starts from:
+
+```yaml
+generates:
+  - name: record-payment
+    from: SalesInvoice
+    to: CustomerPayment
+    uses: customer-payments
+    map: { Customer: Customer, Currency: Currency }
+    defaults: { date: now }
+    prompt:
+      - { field: amount, required: true, default: balance }   # starts from the invoice's balance
+      - { field: Method, required: true }
+      - { field: reference }
+    link:
+      entity: SalesInvoiceCustomerPayment    # a composition child of SalesInvoice
+      map: { amount: amount }                # link field <- created target field
+```
+
+`link:` writes one row of a composition child of the **source** that points at the source and at the target just created, its fields copied from the target through `map`. The link entity lives in the source's model and declares the composition relation to the source and one to-one relation to the target; `relation:` names that one when there are several.
+
+::: info Normative
+The target, its lines and the link row MUST be written as one unit: either all of them become durable or none does. The link row MUST be written through the link entity's own layer, so every rule that layer enforces holds for it, and a refusal of the link row MUST leave no target behind. Consumers of the target's creation MUST observe the link row: the target's creation event MUST NOT be delivered before the unit is durable.
+
+An input left empty whose entry declares `default:` MUST take the source property's value, wherever the action is invoked from; a required input with a default is satisfied by it.
+:::
+
+Without the shared unit the two writes race whatever reacts to the target. A [settlement](#settlements-payment-allocation) spreads a newly created payment over the payer's open invoices, oldest first: a payment recorded on the second invoice and allocated to it by a separate write lands on the first, and the allocation the clerk meant is then refused. Written as one unit, the settlement sees a payment with nothing left to allocate and leaves it where it was recorded.
+
 ### Event-driven creation — `event:`
 
 A create-from may declare an `event:` instead of relying on the button — the follow-up document is minted the moment the source reaches a state, with nobody clicking. The trigger comes from either axis of [the event vocabulary](#the-event-axis-lifecycle-and-process-step-events): the source's own lifecycle, or a process step. The canonical case is a document that arrives from the outside and is completed by an earlier step: a fine ingested by a webhook, whose responsible person is identified by a transition, must produce a declaration document from the fine and that person.
@@ -701,6 +895,33 @@ Two conditions make the reopen idempotent without a marker of its own. The sourc
 Whether a replacement follows immediately is decided by the trigger's own `when:`, not by the reopen — which only publishes the transition. Return the source to the status the trigger qualifies on and the reissue is immediate; return it to an earlier one (a draft, for correction) and it waits for a person to move it forward again.
 
 Prefer this over [`posts`](#posts-derived-rows-on-an-event) when the result is a document with line items — `posts` emits flat mapped rows and cannot reference the freshly created header. Prefer it over a button plus a [`wait`](/spec/processes#wait-park-the-process-on-a-data-event) step when the step is really waiting for a person to remember to click: an unclicked record parks its process instance indefinitely.
+
+## reversals — reverse a booked document (red storno)
+
+A manual **Reverse** on a posted document that has no source event to void — the hand-written journal entry. One action creates the document's **negated twin**: every line copied onto the same side with the declared amounts negated, the twin pointing at the original and the original at the twin, so the pair nets to zero and each record names the other. A document a [posting](#postings-source-document-to-ledger) created is reversed on its source's void instead.
+
+```yaml
+reversals:
+  - name: reverseEntry
+    forEntity: JournalEntry
+    when: "Status == POSTED"            # offered and accepted only in this status
+    label: Reverse
+    link: Storno                        # the twin's to-one to the original
+    backLink: ReversedBy                # optional: the original's to-one to its twin
+    negate: [debit, credit, currencyAmount]   # decimal fields of the header and/or its lines
+    defaults: { date: now }             # header values set instead of copied
+    refuse:
+      - { when: "ReversedBy != null", message: "This entry is already reversed" }
+      - { when: "Storno != null",     message: "A reversal cannot be reversed - reverse the original entry" }
+```
+
+**Normative.** A reversal is a [create-from](#generates-create-from) whose source and target are `forEntity`. It MUST create the twin, its lines and the back-link write as one atomic unit, through the same write path as any create of that entity, so its validations, its document numbering, its initial status, its processes and any date-based period lock all apply: a twin dated into a closed period MUST be rejected with nothing written. The twin MUST start at the entity's initial status rather than the original's.
+
+**Normative.** Every field and to-one of the header and of its line items MUST be copied as it stands, except the primary key, `unique` fields, numbered fields, calculated and aggregated fields, the status relation, a personal owner, `link`, `backLink`, the line's composition reference (which points at the twin) and every `defaults:` key. Each `negate` name MUST be a decimal field of the header or its lines and is copied negated, on the same side; a rate or a quantity that multiplies an amount is not negated.
+
+**Normative.** `link` and `backLink` MUST be to-ones of `forEntity` to itself. The back-link MUST be written on the original as a system write that a user-write immutability rule (`immutableWhen`) does not refuse; nothing else of the original changes.
+
+**Normative.** `when` MUST compare the entity's status relation with one status (a [status name](/spec/data#status-references-name-not-number) or its id); the action is offered in that status only and MUST be rejected in any other. Each `refuse` entry is a condition over the original's own fields and to-ones — one comparison or an ANDed list, `<field> ==|!= <value | null>` — and MUST reject the reversal with its `message`. Refusals MUST be decided under exclusive access to the original, so two concurrent reversals of one document cannot both pass them.
 
 ## resolves — fill a relation from a register valid on a date
 

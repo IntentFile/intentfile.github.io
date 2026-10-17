@@ -50,6 +50,7 @@ fields:
 | `calculatedActionOnCreate` / `calculatedActionOnUpdate` | a server-side action call-out (see [Calculated fields](#calculated-fields)) |
 | `number` | turn a string field into a platform-numbered document field (see [Document numbering](#document-numbering)) |
 | `sensitive` | strip this field from scoped (personal / partner) surfaces (see [Scoped surfaces](/spec/surfaces)) |
+| `renamedFrom` | the field's former name: applying the file renames the stored column, so the values keep up with the rename (see [renamedFrom / dropped](#renamedfrom-dropped-evolving-a-table-that-already-holds-data)) |
 
 ### Logical types
 
@@ -75,6 +76,7 @@ Generators map each logical type to a physical column type. `text` is a large-ob
 | `imports:` | injects import lines into the generated data-access layer (pairs with calculated actions) |
 | `aggregate: true` | on a document master's numeric field, keeps it equal to the sum of the items' same-named field |
 | `kind: setting` | marks the entity as nomenclature / configuration (see [Setting entities](#setting-entities)) |
+| `dropped:` | former field / to-one relation names whose columns applying the file removes, data included (see [renamedFrom / dropped](#renamedfrom-dropped-evolving-a-table-that-already-holds-data)) |
 
 ### Control order
 
@@ -182,6 +184,47 @@ rejected, having no column on this side to constrain.
 A key naming a single field MUST be rejected, naming the field-level `unique` it duplicates.
 A name repeated within one key, and a key declared twice on one entity, MUST be rejected.
 An implementation is NOT required to add the constraint to a table that already exists.
+:::
+
+## renamedFrom / dropped — evolving a table that already holds data
+
+An entity's table outlives the version of the file that created it. Once the application holds
+data, renaming a field and retiring one look alike from the file alone - a name disappears and,
+for a rename, another appears - so the file says which it is:
+
+```yaml
+entities:
+  - name: Invoice
+    dropped: [legacyCode]
+    fields:
+      - { name: id, type: integer, primaryKey: true, generated: true }
+      - { name: issueDate, type: date, renamedFrom: invoiceDate }
+```
+
+`renamedFrom:` on a field names the field it was called before. Applying the file renames the
+stored column, so the existing values move with the new name instead of staying behind in the old
+column while the new field starts empty. It acts only while the old column exists and the new one
+does not, so it is harmless to leave in the file after the rename has run.
+
+`dropped:` on an entity lists former field and to-one relation names whose columns applying the
+file removes, data included. It is the explicit contract step of an expand/contract change: a field
+is first removed from the file - its column and values are kept - and dropped once nothing reads it
+any more.
+
+A field simply deleted from the file is **not** dropped: its column and its values are kept.
+
+::: info Normative
+Applying a file MUST NOT remove the stored column, or the values, of a field or to-one relation
+that the file no longer declares, unless its name is listed under the entity's `dropped:`; a name
+listed there MUST have its column removed, values included. For a field declaring `renamedFrom:`,
+while the column of the former name exists and the field's own does not, applying the file MUST
+make the former column's values readable under the field's name; once either condition no longer
+holds, `renamedFrom:` MUST have no effect.
+
+Each of the following MUST be reported as an authoring error: a `dropped:` name or a
+`renamedFrom:` source that the entity still declares as a field or a relation, compared by the
+column the name maps to; a field `renamedFrom` its own name; a `renamedFrom:` source also listed
+under `dropped:`; two fields `renamedFrom` the same name; and an empty name in either key.
 :::
 
 ## defaultValue — field defaults
@@ -390,6 +433,27 @@ The alternative — a hand-written calculated action that recomputes the offendi
 `when:` is the condition — one or more `<Property> ==|!= <literal>` comparisons over the record's own properties, ANDed. It compares strings, integers, booleans and a to-one's key, the types an equality is exact on; a decimal, a double or a date is refused rather than compared for equality. A literal that is not a value of the compared property's type is refused too, as is a condition without the comparison shape at all: reading an uninterpretable condition as "always true" would turn the entry into an unconditional `required` nobody authored, and as "always false" would switch the rule off — both silently. A status may be named by its seeded name, as everywhere else.
 
 `status:` is optional, and its presence decides WHEN the rule is evaluated. Without it the rule holds on every user write. With it the rule is evaluated when the record is persisted carrying that status — the transition that sends the document, not the drafting before it, which is what makes the rule expressible at all: a record being typed has not chosen how it will be sent.
+
+### severity: warn — warn and confirm instead of refuse
+
+Every other check refuses the write. Some rules are not refusals: a second customer with the same name is legitimate (two companies may share a registered name under different registration numbers), yet the person typing it should be asked first; a document line at price zero may be a gift or a typing mistake. The soft tier states those rules — the write stays possible, and the person saving it is told and confirms.
+
+```yaml
+- name: Customer
+  checks:
+    - { kind: duplicate, fields: [name], message: "A customer with this name already exists: {match}" }
+    - { kind: compare, field: discount, op: le, value: 50, severity: warn, message: "A discount above 50%" }
+- name: SalesInvoice
+  checks:
+    # asked ONCE per document save, for all the lines that break it
+    - { kind: itemsCompare, field: price, op: gt, value: 0, message: "{count} line(s) at price zero" }
+```
+
+- `severity: warn` softens an ungated row-level check (`compare`, `requiredWhen`, `forbidWhen`, `exactlyOne`, `agree`). A check with a `status` gate runs inside a workflow transition, where nobody can answer a question, so the two are refused together.
+- `duplicate` — another record already carries the same `fields` (own fields or to-one relations). A `string` or `text` field is compared **ignoring case and surrounding spaces**, so "ACME Ltd" is asked about when "Acme Ltd " exists: the rule is the same name typed again, which rarely matches byte for byte, and a false positive only costs a confirmation. A to-one and a number compare exactly. `{match}` in the message is the existing record's label (its `name`, else its identifier), so the warning says which record it collides with. Always a warning; the hard version is `unique:`.
+- `itemsCompare` — on the document: every item's `field` compared with `op` to the `value` literal. `{count}` in the message is the number of lines that break it. Always a warning; the hard version is a `compare` on the items entity.
+
+A warning is enforced where the record is written, not only in a form: an unconfirmed write is answered with the list of warnings (each a stable code and its message) and nothing is written; the same write repeated with the codes it confirms goes through. A confirmation covers only the codes it names. A process step or a scheduled job writes on nobody's behalf and is never stopped by a warning.
 
 ### kind: guard — a precondition over an aggregate
 

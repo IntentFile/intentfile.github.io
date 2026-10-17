@@ -12,15 +12,19 @@ The quick lookup surface: one line and a minimal snippet per construct. For rule
 | [`entities`](/spec/entities) | tables + CRUD UI + a generated data layer & API |
 | [field / relation attributes](/spec/entities#fields) | uniqueness, layout, read-only, dropdown filtering, cascades |
 | [`entities.unique`](/spec/entities#unique-a-business-key-over-more-than-one-field) | a business key spanning more than one field or to-one relation |
+| [`renamedFrom`](/spec/entities#renamedfrom-dropped-evolving-a-table-that-already-holds-data) | a field's former name: the stored column is renamed in place, so the values move with the new name |
+| [`entities.dropped`](/spec/entities#renamedfrom-dropped-evolving-a-table-that-already-holds-data) | former field / to-one relation names whose columns are removed, data included - a field merely deleted from the file keeps its column |
 | [`visibleTo`](/spec/entities#role-scoped-field-visibility-visibleto) | an allow-list of roles that may read one field, enforced on the wire |
 | [`pattern`](/spec/entities#fields) | an input-format regular expression enforced in the UI and server-side |
 | [`defaultValue`](/spec/entities#defaultvalue-field-defaults) | a field default: column default, satisfies `required`, and seeds a new row in the UI |
 | [`dependsOn`](/spec/relations) | link a dropdown to another, copy a value from the referenced record, or default a line from the open document header |
+| [`inlineCreate`](/spec/relations#relation-attributes) | `false` keeps a to-one picker to existing rows - no create-from-the-picker |
 | [`function`](/spec/entities#function-the-presentation-role) | an explicit presentation role (Document, Setting, ...) |
 | [`label`](/spec/entities#label-a-stored-display-name) | a stored, read-only display name for lookups |
 | [`label` / `countryLabels` (field)](/spec/entities#label-countrylabels-what-a-field-is-called) | what a field is called, and the variants the tenant's country resolves |
 | [`number`](/spec/entities#document-numbering) | a platform-numbered, gap-free document field |
 | [`checks`](/spec/entities#checks-declarative-validations) | cross-field / cross-line validations |
+| [`checks: severity: warn` / `duplicate` / `itemsCompare`](/spec/entities#severity-warn-warn-and-confirm-instead-of-refuse) | a check the person saving confirms instead of a refusal |
 | [`checks: kind: guard`](/spec/entities#kind-guard-a-precondition-over-an-aggregate) | a precondition over an aggregate: block, mark for a task, or reject |
 | [`immutableWhen` / `immutable`](/spec/entities#immutablewhen-immutable-user-write-immutability) | reject user writes in a status / append-only |
 | [`lifecycle`](/spec/entities#lifecycle-the-legal-status-graph) | the whole legal status graph, enforced on every status write |
@@ -30,6 +34,7 @@ The quick lookup surface: one line and a minimal snippet per construct. For rule
 | [`hierarchy` / `leafOnly`](/spec/entities#hierarchy-leafonly-tree-entities) | tree entities, leaf-only references |
 | [calculated fields](/spec/entities#calculated-fields) | server + UI-evaluated expressions, date helpers, call-outs |
 | [`relations` / `composition`](/spec/relations#relations) | associations and master-detail compositions |
+| [`relations` / `pickable`](/spec/relations#which-target-rows-a-picker-offers-pickable) | which target rows a to-one's picker offers: a failing row listed disabled with a message, or left out |
 | [`relations` / `whenMasterDeleted`](/spec/relations#deleting-the-master-whenmasterdeleted) | whether deleting a master deletes the composition children it owns, or is refused while they exist |
 | [`uses`](/spec/relations#multi-model-applications) | reuse entities owned by another intent model |
 | [`related`](/spec/relations#related) | a read-only register of the records referencing this entity, on its own page |
@@ -43,7 +48,7 @@ The quick lookup surface: one line and a minimal snippet per construct. For rule
 | [`actions`](/spec/processes#actions-custom-buttons) | developer-defined buttons opening custom pages |
 | [`view`](/spec/presentation#view-calendar-range-slots) | an additional calendar / range page, or a slot-booking page |
 | [`documentItemsLayout: chat`](/spec/presentation#documentitemslayout-chat-conversation-threads) | render a document's items as a chat thread |
-| [`reports`](/spec/presentation#reports) | aggregations, charts, dashboard KPI tiles, balance and ledger reports, user-set parameters |
+| [`reports`](/spec/presentation#reports) | aggregations, charts, dashboard KPI tiles, balance and ledger reports, financial and cash-flow statements, user-set parameters |
 | [`scope`](/spec/presentation#lifecycle-scope) | which lifecycle rows an aggregating report counts |
 | [`widgets`](/spec/presentation#widgets-custom-dashboard-tiles) | custom KPI / embedded-page dashboard tiles |
 | [`notify.forEach`](/spec/glue#one-message-per-related-row-foreach) | fan the block out over a related collection: one message per row, every bare path resolved against the row |
@@ -57,14 +62,20 @@ The quick lookup surface: one line and a minimal snippet per construct. For rule
 | [`schedules`](/spec/glue#schedules) | cron: notify or generate records per matching row; `where` values may be moments relative to the firing |
 | [`integrations`](/spec/glue#integrations-outbound-http) | outbound HTTP on a data change |
 | [`inbound`](/spec/glue#inbound-arrivals-from-outside) | records arriving from outside: a webhook, a queue/topic message, a dropped file |
+| [`inbound.accept` / `inbound.map`](/spec/glue#reading-an-arrival-as-an-envelope-accept-map) | read an arrival as an envelope: gate on its type and version, map its keys onto the record, resolve a business key to a relation |
+| [`inbound.map` collections](/spec/glue#an-envelope-array-as-composition-children-collections) | an envelope array becomes the composition children of the created record, stored with it as one unit |
+| [`imports`](/spec/glue#imports-a-file-uploaded-into-rows) | an uploaded file (CSV with locale rules, MT940, camt.053) read into rows, whole or not at all, refused when it repeats a duplicate key |
 | [`outbound`](/spec/glue#outbound-departures-on-a-queue-or-a-topic) | a record emitted on a queue or a topic when an event fires |
+| [`exports`](/spec/glue#exports-a-file-in-an-exacting-format-over-a-query) | a fixed-width, delimited or XML file over an entity or a report, every run recorded on a ledger entity |
 | [`rollups`](/spec/glue#rollups-denormalised-parent-totals) | counts, sums, balance + status maintenance |
 | [`settlements`](/spec/glue#settlements-payment-allocation) | auto-allocation of payments across open invoices |
 | [`expansions`](/spec/glue#expansions-child-rows-from-a-date-span) | generated child rows per day / week / month |
 | [`generates`](/spec/glue#generates-create-from) | one-click document-from-document cloning |
 | [`generates.items.where`](/spec/glue#which-source-rows-become-lines-where-refuse) | which of the source document's rows become target lines - and what an unqualified one costs |
+| [`generates.prompt` / `generates.link`](/spec/glue#recorded-from-the-document-it-settles-prompt-and-link) | ask for what the source cannot supply (defaults read off the source), and write the source's link row to the new target in the same unit |
 | [`generates.event`](/spec/glue#event-driven-creation-event) | mint the document on a source event - a status write, a create, or a process step |
 | [`generates.event.mode`](/spec/glue#cardinality-mode-once-append) | one target per source (`once`, default) or one per delivered event (`append`) |
+| [`reversals`](/spec/glue#reversals-reverse-a-booked-document-red-storno) | a manual Reverse on a posted document - its negated twin, linked both ways |
 | [`resolves`](/spec/glue#resolves-fill-a-relation-from-a-register-valid-on-a-date) | fill a to-one from the register row valid on the record's date |
 | [`transitions`](/spec/glue#transitions-guarded-status-flips) | guarded on-demand status flips (void / cancel / reopen) |
 | [`postings`](/spec/glue#postings-source-document-to-ledger) | declarative source-document to balanced-document posting - on a status transition, on create for a lifecycle-less source, or on a declared enrichment phase |
@@ -103,6 +114,7 @@ entities:
 - { name: Status,  kind: manyToOne, to: OrderStatus, function: EntityStatus, init: 1 }
 - { name: City,    kind: manyToOne, to: City, dependsOn: { relation: Country, filterBy: Country } }
 - { name: Product, kind: manyToOne, to: Product, where: { Type: 1 } }
+- { name: Customer, kind: manyToOne, to: Customer, pickable: { when: [registrationNumber != null, address != null], message: "Registration data incomplete" } }
 - { name: tags,    kind: manyToMany, to: Tag, through: OrderTag }   # link entity, named
 ```
 
@@ -176,7 +188,7 @@ reports:
     widget: { value: "sum(total)", at: { "month(orderDate)": now }, label: Revenue (this month) }
 ```
 
-### generates / transitions
+### generates / transitions / reversals
 
 ```yaml
 generates:
@@ -190,6 +202,9 @@ generates:
 
 transitions:
   - { name: VoidInvoice, forEntity: Invoice, from: [ISSUED, SENT], setStatus: VOIDED, when: "Paid == 0", label: Void, icon: ban }
+
+reversals:
+  - { name: reverseEntry, forEntity: JournalEntry, when: "Status == POSTED", link: Storno, backLink: ReversedBy, negate: [debit, credit] }
 ```
 
 ### seeds
