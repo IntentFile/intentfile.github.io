@@ -18,6 +18,7 @@ The quick lookup surface: one line and a minimal snippet per construct. For rule
 | [`pattern`](/spec/entities#fields) | an input-format regular expression enforced in the UI and server-side |
 | [`defaultValue`](/spec/entities#defaultvalue-field-defaults) | a field default: column default, satisfies `required`, and seeds a new row in the UI |
 | [`dependsOn`](/spec/relations) | link a dropdown to another, copy a value from the referenced record, or default a line from the open document header |
+| [`inlineCreate`](/spec/relations#relation-attributes) | `false` keeps a to-one picker to existing rows - no create-from-the-picker |
 | [`function`](/spec/entities#function-the-presentation-role) | an explicit presentation role (Document, Setting, ...) |
 | [`label`](/spec/entities#label-a-stored-display-name) | a stored, read-only display name for lookups |
 | [`label` / `countryLabels` (field)](/spec/entities#label-countrylabels-what-a-field-is-called) | what a field is called, and the variants the tenant's country resolves |
@@ -69,6 +70,7 @@ The quick lookup surface: one line and a minimal snippet per construct. For rule
 | [`expansions`](/spec/glue#expansions-child-rows-from-a-date-span) | generated child rows per day / week / month |
 | [`generates`](/spec/glue#generates-create-from) | one-click document-from-document cloning |
 | [`generates.items.where`](/spec/glue#which-source-rows-become-lines-where-refuse) | which of the source document's rows become target lines - and what an unqualified one costs |
+| [`generates.prompt` / `generates.link`](/spec/glue#recorded-from-the-document-it-settles-prompt-and-link) | ask for what the source cannot supply (defaults read off the source), and write the source's link row to the new target in the same unit |
 | [`generates.event`](/spec/glue#event-driven-creation-event) | mint the document on a source event - a status write, a create, or a process step |
 | [`generates.event.mode`](/spec/glue#cardinality-mode-once-append) | one target per source (`once`, default) or one per delivered event (`append`) |
 | [`resolves`](/spec/glue#resolves-fill-a-relation-from-a-register-valid-on-a-date) | fill a to-one from the register row valid on the record's date |

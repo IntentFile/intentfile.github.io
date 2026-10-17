@@ -649,6 +649,39 @@ With it, an unqualified row refuses the whole create-from with the authored mess
 
 The rule belongs to the mirror form of `items:`. The computed form — `items` as a list of synthetic lines over the source record — has no source rows to select from and guards each line with its own `when` cell. An `items` block that declares no `where:` behaves exactly as it did.
 
+### Recorded from the document it settles — `prompt:` and `link:`
+
+Some targets are recorded *from* a document and belong to it: a payment entered on the invoice it pays. Two things make that one action rather than two.
+
+`prompt:` asks for what the source cannot supply — which method, which reference, how much — before the target is created. Each entry names a field or a to-one relation of the **target**; `required: true` refuses the action without it, and `default:` names a property of the **source** the input starts from:
+
+```yaml
+generates:
+  - name: record-payment
+    from: SalesInvoice
+    to: CustomerPayment
+    uses: customer-payments
+    map: { Customer: Customer, Currency: Currency }
+    defaults: { date: now }
+    prompt:
+      - { field: amount, required: true, default: balance }   # starts from the invoice's balance
+      - { field: Method, required: true }
+      - { field: reference }
+    link:
+      entity: SalesInvoiceCustomerPayment    # a composition child of SalesInvoice
+      map: { amount: amount }                # link field <- created target field
+```
+
+`link:` writes one row of a composition child of the **source** that points at the source and at the target just created, its fields copied from the target through `map`. The link entity lives in the source's model and declares the composition relation to the source and one to-one relation to the target; `relation:` names that one when there are several.
+
+::: info Normative
+The target, its lines and the link row MUST be written as one unit: either all of them become durable or none does. The link row MUST be written through the link entity's own layer, so every rule that layer enforces holds for it, and a refusal of the link row MUST leave no target behind. Consumers of the target's creation MUST observe the link row: the target's creation event MUST NOT be delivered before the unit is durable.
+
+An input left empty whose entry declares `default:` MUST take the source property's value, wherever the action is invoked from; a required input with a default is satisfied by it.
+:::
+
+Without the shared unit the two writes race whatever reacts to the target. A [settlement](#settlements-payment-allocation) spreads a newly created payment over the payer's open invoices, oldest first: a payment recorded on the second invoice and allocated to it by a separate write lands on the first, and the allocation the clerk meant is then refused. Written as one unit, the settlement sees a payment with nothing left to allocate and leaves it where it was recorded.
+
 ### Event-driven creation — `event:`
 
 A create-from may declare an `event:` instead of relying on the button — the follow-up document is minted the moment the source reaches a state, with nobody clicking. The trigger comes from either axis of [the event vocabulary](#the-event-axis-lifecycle-and-process-step-events): the source's own lifecycle, or a process step. The canonical case is a document that arrives from the outside and is completed by an earlier step: a fine ingested by a webhook, whose responsible person is identified by a transition, must produce a declaration document from the fine and that person.

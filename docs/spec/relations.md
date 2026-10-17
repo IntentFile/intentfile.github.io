@@ -86,6 +86,7 @@ A conforming generator must, for every composition, either delete the children w
   Fields only, and `valueFrom` is required (there is no option list to `filterBy`). The copy happens when a NEW line is opened; an existing line is never re-copied, so a later change to the header leaves already-entered lines untouched.
 
 - **`where`** filters the dropdown to options matching a static condition.
+- **`inlineCreate: false`** keeps a to-one's picker to existing rows: no affordance to create a target row from the picker. A row created that way is committed on its own, before the record holding the relation is saved, so whatever reacts to its creation runs first — a payment created from an allocation row's picker is settled against the oldest open invoice before the allocation is saved. Use it on such a picker and record the target from the document instead ([`link:`](/spec/glue#recorded-from-the-document-it-settles-prompt-and-link)). Absent, a generator decides; the value already held keeps its label either way.
 
 ### Which target rows a picker offers — `pickable`
 
