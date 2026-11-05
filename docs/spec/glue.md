@@ -745,6 +745,43 @@ With it, an unqualified row refuses the whole create-from with the authored mess
 
 The rule belongs to the mirror form of `items:`. The computed form — `items` as a list of synthetic lines over the source record — has no source rows to select from and guards each line with its own `when` cell. An `items` block that declares no `where:` behaves exactly as it did.
 
+### Lines read from a report — `fromReport:` and `undo:`
+
+A year close books the ledger's own balances: one closing entry with a line per result account, taking its year balance off it, and the opposite booked on the account it closes into. Every one of those numbers is a row of a `kind: balance` report, so the items block may read that report instead of the source's child rows.
+
+```yaml
+generates:
+  - name: closeYear
+    from: FiscalYear
+    to: Journal
+    map: { Year: id, date: endDate }         # the source key onto the target: required
+    items:
+      fromReport: YearBalance                # a kind: balance report
+      parameters: { fromDate: startDate, toDate: endDate }
+      to: JournalLine
+      where:
+        - { field: Account.ClosingAccount, op: ne, value: null }
+      map: { Account: Account.id, debit: closingCredit, credit: closingDebit }
+      counter: { Account: Account.ClosingAccount, debit: closingDebit, credit: closingCredit }
+    undo: reverse
+```
+
+A column is named by a report dimension (`Account.id`) or by one of the six balance amounts: `openingDebit`, `openingCredit`, `debit`, `credit`, `closingDebit`, `closingCredit`. `parameters:` binds report parameters to properties of the source record, and must bind `fromDate` and `toDate`. `where:` takes `{ field, op, value }` conditions over the columns; `value: null` with `eq` or `ne` asks whether the cell is empty. `counter:` declares the counter line: the rows whose counter cells other than the amounts are equal share one counter line carrying the sum of their amounts. `undo: reverse` adds an undo action on the source that books the target's [reversal](#reversals-reverse-a-booked-document-red-storno).
+
+This is items mode: the report supplies the lines of one target record. One target record per report row, with no header, is not part of it.
+
+::: info Normative
+`items.fromReport` MUST name a `kind: balance` report that declares no `correspondence`, and MUST NOT be combined with `items.from`, `items.refuse`, an `event:` trigger, or a source or target owned by another model. The target's `map` MUST copy the source's key onto the target; a file without it MUST be reported as an authoring error, as MUST an unbound `fromDate` or `toDate`, an unknown column, an amount mapped into a property that is not a decimal, a dimension mapped into a decimal property, and an ordering operator against `null`. The report MUST be run with the source record's values; a record holding no value for a bound property MUST refuse the run rather than read the report's default window.
+
+Each row satisfying every `where` condition MUST become one line. An amount MUST be written only into a decimal property and only as the exact decimal that property holds; a value that would need rounding MUST refuse the run. Rows whose counter cells other than the amounts are equal MUST share one counter line whose amounts are their sums. A run in which no row qualifies MUST be refused. Every refusal MUST be decided before the target is written.
+
+A run MUST be refused while a target back-referencing the source is live: not retired by its lifecycle stage, and not reversed by a reversal standing in the status the reversal is offered from. Two concurrent runs for one source MUST NOT both succeed.
+
+`undo: reverse` requires a reversal on the target that declares `backLink`; a file without one MUST be reported as an authoring error. The undo MUST book that reversal against the live target, and MUST refuse a target already reversed, one not in the reversal's `when` status, and a source with no live target. A create-from declaring neither `items.fromReport` nor `undo` MUST generate byte-identical output.
+:::
+
+Once the reversal is posted, the closed document is history and the source may be run again - the year is reopened by the same booking an accountant would make by hand. A reversal that should land in the closed year declares no date default, so the twin keeps the original's date.
+
 ### Recorded from the document it settles — `prompt:` and `link:`
 
 Some targets are recorded *from* a document and belong to it: a payment entered on the invoice it pays. Two things make that one action rather than two.
