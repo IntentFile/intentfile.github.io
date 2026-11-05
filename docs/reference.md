@@ -78,6 +78,7 @@ The quick lookup surface: one line and a minimal snippet per construct. For rule
 | [`reversals`](/spec/glue#reversals-reverse-a-booked-document-red-storno) | a manual Reverse on a posted document - its negated twin, linked both ways |
 | [`resolves`](/spec/glue#resolves-fill-a-relation-from-a-register-valid-on-a-date) | fill a to-one from the register row valid on the record's date |
 | [`transitions`](/spec/glue#transitions-guarded-status-flips) | guarded on-demand status flips (void / cancel / reopen) |
+| [`transitions[].stamp`](/spec/glue#stamp-the-transition-issues-the-document-number) | the transition draws the entity's `stampOn: issue` number in the same write as its status, after its gated checks pass |
 | [`postings`](/spec/glue#postings-source-document-to-ledger) | declarative source-document to balanced-document posting - on a status transition, on create for a lifecycle-less source, or on a declared enrichment phase |
 | [`aggregates`](/spec/glue#aggregates-keyed-cross-entity-totals) | keyed cross-entity totals materialised into their own entity |
 | [`posts`](/spec/glue#posts-derived-rows-on-an-event) | derived ledger rows emitted idempotently on an event |
