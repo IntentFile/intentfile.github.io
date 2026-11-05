@@ -292,7 +292,7 @@ The implementation lives in the project's **custom** (escape-hatch) folder, neve
 
 - **`series`** (mandatory) — the sequence identity. Give several document types the **same series** to share one running number (a sales invoice, a credit note and a debit note drawing from one legal range).
 - **`per`** (optional) — a to-one relation of the entity whose value **partitions** the series: each partition value owns its sequence, prefix and width. The canonical use is `per: Company` — two legal entities in one deployment each owe their own sequential range and must never share a counter. Identical numbers across partitions are correct (a number must be unique within a company's book, not across companies). The partition selects which sequence to draw from; its value never appears in the number. A status relation cannot partition a series.
-- **`stampOn`** — `create` stamps the real number on insert; `issue` puts a placeholder on the field at create and stamps the real number when the process reaches the wired step. Stamping is **idempotent** - re-issuing after an amend keeps the same number.
+- **`stampOn`** — `create` stamps the real number on insert; `issue` puts a placeholder on the field at create and stamps the real number when the process reaches the wired step, or when a transition declaring [`stamp: number`](/spec/glue#stamp-the-transition-issues-the-document-number) moves the record. Stamping is **idempotent** - re-issuing after an amend keeps the same number.
 
 ### The series is configuration, not model
 

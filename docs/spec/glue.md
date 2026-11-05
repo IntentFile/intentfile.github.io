@@ -976,6 +976,20 @@ When the entity declares a [`lifecycle`](/spec/entities#lifecycle-the-legal-stat
 
 A transition may carry a [notify block](#the-notify-block-and-attach-print) — "on Void, tell the customer" — attempted after the flip has committed, and unable to fail it.
 
+### stamp — the transition issues the document number
+
+A transition MAY declare `stamp: number`. It is then the document's Issue: the entity's [`number: { stampOn: issue }`](/spec/entities#document-numbering) is drawn and written together with the status, so a draft holds no number and a draft deleted before it is issued leaves no gap in the series.
+
+```yaml
+transitions:
+  - { name: IssueProtocol,  forEntity: VatProtocol, from: [DRAFT], setStatus: ISSUED, stamp: number }
+  - { name: CancelProtocol, forEntity: VatProtocol, from: [DRAFT], setStatus: CANCELLED }
+```
+
+::: info Normative
+`stamp` MUST be refused with any value other than `number`, and on a transition whose entity declares no `stampOn: issue` number field. A conforming generator MUST check the move — its lifecycle edge and the checks gated on the target status — before it draws a number, MUST write the number and the status in one write, and MUST return a drawn number when that write is refused, so that a refused move spends no value of the series. A document whose number field already holds a number MUST keep it. Only the transition that declares `stamp: number` draws the number.
+:::
+
 ## postings — source document to ledger
 
 When a (usually cross-model) source document reaches a status, create one local document with computed multi-line content. Idempotent via the back-reference; a missing rule or account skips (an unposted worklist), never throws.
