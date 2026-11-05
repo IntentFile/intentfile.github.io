@@ -62,6 +62,12 @@ Generators map each logical type to a physical column type. `text` is a large-ob
 **Primary keys must be an integer type** (`integer` / `int` / `long`). A non-integer auto-increment column is invalid, so a `uuid` or string primary key is rejected. `uuid` is valid for non-PK fields.
 :::
 
+A `uuid` field is the record's stable external identity — the value prints, exports and integrations match on — so its value is the server's to issue: a client never chooses it.
+
+::: info Normative
+On a create through the generated application's API, on every surface that accepts one, a conforming generator MUST ignore a value the client sends for a non-key `uuid` field, without refusing the create, and MUST store a freshly drawn UUID. An update MUST keep the stored value. A writer inside the application that creates the record — a create-from, a posting, an import, an inbound message, hand-written code — MUST receive a drawn UUID unless its declaration maps a value into the field, and data loaded below the application, such as seed data or a migration, MUST keep the UUID it carries. The field MUST need no declaration beyond `type: uuid`.
+:::
+
 ### Entity-level attributes
 
 | Attribute | Effect |
