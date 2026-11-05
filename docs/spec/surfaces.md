@@ -31,6 +31,20 @@ entities:
 A scope's safety is by **construction, not by a filter**: the scoped controller only ever queries the caller's own rows, and a sensitive field is on an allow-list the scoped serialiser never includes. A field hidden only in the UI is cosmetic; `sensitive` is a server-side guarantee.
 :::
 
+### owner — a Mine filter on the regular list
+
+A to-one relation to an `identity`-declaring entity MAY declare `owner: true`. The entity's regular list then offers **All** and **Mine**, Mine showing the rows whose relation names the caller's identity record — a sales rep's own quotations, an agent's own tickets — beside the rows the rep's role already lets them read:
+
+```yaml
+- { name: SalesRep, kind: manyToOne, to: Employee, owner: true }
+```
+
+Unlike `personal:`, `owner:` adds no surface: it is a filter on the regular one, not a scope. The regular surface's roles decide what the caller may read, and Mine narrows that. A relation may carry both keys, when the owner also needs the personal surface.
+
+::: info Normative
+`owner: true` MUST be accepted only on a `manyToOne` or `oneToOne` relation whose target declares `identity`, at most once per entity; on a `subset`, a `manyToMany`, a second owner relation and a target without `identity` it MUST be reported as an authoring error (for a target owned by another model, at generation). A conforming generator MUST let the regular list, its count and its search be narrowed to the rows whose owner relation is the caller's identity record, resolved as the personal surface resolves it; a caller whom no identity record maps owns no row, so the narrowed list MUST be empty and its count 0. The narrowing MUST apply after the regular surface's role gate and MUST NOT widen what it lets through. The regular list page MUST offer the choice between all rows and the caller's own, all rows being the default. `owner` MUST NOT scope a write or add a surface, and an entity without an owner relation MUST generate byte-identical output.
+:::
+
 A user task can also be routed to the record owner's inbox with the literal `assignee: personal`, which resolves the owner through the `personal:` relation, or to whoever a relation walk off the record names — `assignee: { path, fallback }`, whose walk likewise ends at an `identity`-declaring entity (see [processes](/spec/processes#task-assignment)).
 
 ## permissions
