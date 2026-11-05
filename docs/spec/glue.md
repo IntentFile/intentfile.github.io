@@ -271,6 +271,40 @@ schedules:
           dayField: day
 ```
 
+### Which rows become children (`where`), and a refused child (`onRefused`)
+
+An `entity` child may take a `where:`: the conditions a schedule's own `where` carries, read on each row of the collection, and only the rows that satisfy all of them become children. A condition reads a field or to-one relation of the collection entity, or one relation hop, `<relation>.<field>`. The collection, and the entity a hop reaches, may each be owned by another model; the hop reads the related entity in the model that owns it. A row whose relation is empty never satisfies a hop condition.
+
+A source row's generation is one unit, so by default one child the target refuses fails the header and every sibling. `onRefused: skip` on a children entry leaves such a child out instead - logged, and taken back with everything written for it beneath it - and the header and the other children are still created. Any other failure still fails the source row.
+
+```yaml
+      children:
+        - to: EmployeeTimesheet
+          parent: ProjectTimesheet
+          forEach: { entity: EmployeeProjectAssignment, model: projects, match: { Project: id } }
+          where:
+            - { field: Employee.active, op: eq, value: true }   # the employees model's employee; none for an inactive one
+          map: { Employee: Employee }
+          onRefused: skip                # a timesheet the target refuses is left out, not the month
+          children:
+            - to: EmployeeDayAllocation
+              parent: EmployeeTimesheet
+              forEach: { days: workingDays }
+              dayField: day
+              defaults: { hours: 8 }
+              onRefused: skip            # a day the target refuses is left out, not the timesheet
+```
+
+- `onRefused` belongs to a children entry, and `skip` is its only value. A refused child takes its own children with it, unless their entry declares `onRefused: skip` itself.
+- A header's totals, counts and roll-ups reflect only the children that were created.
+- A condition on a seeded relation of a collection of this model may name the seed, as in a schedule's `where`; elsewhere give its key. A `days` child has no row to filter and takes no `where:`.
+
+::: info Normative
+A conforming generator MUST create a child only for a collection row that satisfies every condition of the entry's `where`, with the operators and values of a schedule's `where`; a hop condition MUST be read on the row the relation points at, in the model that owns that row, and a row whose relation is empty MUST NOT satisfy it. It MUST reject `where` on a `days` child, a path longer than one hop, and a field or relation the entity it is read on does not have - checked against the owning model, for an entity another model owns. A seed name on a field of a collection of the same model MUST resolve as in a schedule's `where`.
+
+Under `onRefused: skip`, a child the target refuses through its own rules MUST be left out with everything written for it beneath it - its writes and the announcements of them taken back - and MUST be logged with the source row's key; the header and the other children MUST still be created. A refusal beneath a child whose own entry does not declare `onRefused: skip` MUST leave out the nearest child that does, or fail the source row when none does. Any other failure MUST fail the source row. A header's totals MUST reflect only the children that were created. `skip` is the only value; any other MUST be rejected. Where the data store cannot take back part of a unit of work, a refused child MUST fail the source row.
+:::
+
 ### Cross-model source (`model:`)
 
 The source `entity` is local by default. Add `model: <uses alias>` to read it from another (owner) model, so a schedule can live with the module that owns the CREATED rows instead of being forced into the source's module. The source is **read-only** (a schedule never writes it); a `forEach` collection may likewise be cross-model with its own `model:` alias. Both aliases must be declared under `uses:`.
