@@ -407,11 +407,26 @@ Row-level and document-level validations, enforced on write / on a status transi
 
 `compare` relates two of the record's own fields, read as `field <op> than`, where `op` is `ge`, `gt`, `le`, `lt`, `eq` or `ne`. It is the rule every business document has and none of the other kinds can state: a due date never before the invoice date, a validity `to` never before its `from`, a delivery date never before the order date, an amount paid never above the total.
 
-Being row-level it holds from the first save and takes no `status` gate — a rule about two values of one row is not something a transition switches on. Both operands are the entity's own **fields** (a comparison of two foreign keys means nothing) and must be in one comparison family: both dates, both timestamps, or both numbers of any width, where numbers compare by value so a `decimal` against a `long` is exact. A date against a timestamp is refused rather than coerced, as are a string / boolean / month operand and a field compared with itself.
+Without a `status:` it holds from the first save, on every user write; with one it is evaluated when the record is persisted carrying that status — the transition into it, not the drafting before it. Both operands are the entity's own **fields** (a comparison of two foreign keys means nothing) and must be in one comparison family: both dates, both timestamps, or both numbers of any width, where numbers compare by value so a `decimal` against a `long` is exact. A date against a timestamp is refused rather than coerced, as are a string / boolean / month operand and a field compared with itself.
 
 An **absent operand is not a violation**: a comparison is about two values that exist, and whether a field may be empty at all is `required:`. A record carrying no `due` passes, and starts failing the moment a due date is entered behind the date.
 
 The alternative — a hand-written calculated action that recomputes the offending value — *corrects* instead of refusing, so the person who typed the date is never told it was overruled.
+
+#### Against another record — a gated `than:` formula
+
+A `compare` gated on a `status:` MAY name, as `than:`, a formula over the fields of one to-one relation of the entity, which MAY point into another model. It states "the figure this document stored is still what its source says" at the move that relies on it:
+
+```yaml
+- { kind: compare, field: base, op: eq, than: "PurchaseInvoice.net - PurchaseInvoice.credited", status: ISSUED,
+    message: "The purchase invoice changed since this protocol was drafted" }
+```
+
+The related record is read when the record is written carrying the gate status; a move into another status — a Cancel — is never asked. The formula's result is rounded to the left field's scale, and a record that references no related record has no right-hand side. As for every gated check, a later write of a record still carrying the gate status is judged again, against the related record as it then stands.
+
+::: info Normative
+A `than:` that reads a related record MUST be refused without a `status:` gate, on a left field that is not a number, when its terms read more than one relation, and when it contains anything but numbers, `+ - * /`, parentheses, the functions `round`, `abs`, `min`, `max`, `ceil`, `floor` and `<relation>.<field>` terms. A term that is not a number field of the related entity MUST be refused wherever the generator knows that entity. A conforming generator MUST read the related record when the record is written carrying the gate status, MUST NOT evaluate the check on a write into another status, and MUST round the formula's result to the left field's scale before it compares. A record that references no related record MUST NOT be refused by the check.
+:::
 
 ### kind: requiredWhen — a value required only under a condition
 
