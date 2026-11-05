@@ -59,7 +59,7 @@ The quick lookup surface: one line and a minimal snippet per construct. For rule
 | [notify link placeholders](/spec/glue#links-back-to-the-application-recordurl-inboxurl-appurl) | `{recordUrl}` / `{inboxUrl}` / `{appUrl}` - a message that carries the way back into the application |
 | [the notify block / `attach: print`](/spec/glue#the-notify-block-and-attach-print) | send a message about a record - with the record's own document attached - from a process step, a transition or a schedule |
 | [`fileName`](/spec/presentation#naming-the-rendered-file-filename) | the name a rendered document is stored or attached under - a pattern over the record's own data |
-| [`schedules`](/spec/glue#schedules) | cron: notify or generate records per matching row; `where` values may be moments relative to the firing |
+| [`schedules`](/spec/glue#schedules) | cron: notify or generate records per matching row; `where` values may be moments relative to the firing; a generation's `children` take a row rule (`where`, one relation hop) and may leave out a child the target refuses (`onRefused: skip`) |
 | [`integrations`](/spec/glue#integrations-outbound-http) | outbound HTTP on a data change |
 | [`inbound`](/spec/glue#inbound-arrivals-from-outside) | records arriving from outside: a webhook, a queue/topic message, a dropped file |
 | [`inbound.accept` / `inbound.map`](/spec/glue#reading-an-arrival-as-an-envelope-accept-map) | read an arrival as an envelope: gate on its type and version, map its keys onto the record, resolve a business key to a relation |
