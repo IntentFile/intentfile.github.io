@@ -16,6 +16,7 @@ The quick lookup surface: one line and a minimal snippet per construct. For rule
 | [`entities.dropped`](/spec/entities#renamedfrom-dropped-evolving-a-table-that-already-holds-data) | former field / to-one relation names whose columns are removed, data included - a field merely deleted from the file keeps its column |
 | [`visibleTo`](/spec/entities#role-scoped-field-visibility-visibleto) | an allow-list of roles that may read one field, enforced on the wire |
 | [`pattern`](/spec/entities#fields) | an input-format regular expression enforced in the UI and server-side |
+| [`normalize`](/spec/entities#normalize-the-stored-form) | a text field's stored form - trim, strip characters, fold case, a blank stored as no value - applied on every write before `pattern` and `checks` read it |
 | [`defaultValue`](/spec/entities#defaultvalue-field-defaults) | a field default: column default, satisfies `required`, and seeds a new row in the UI |
 | [`dependsOn`](/spec/relations) | link a dropdown to another, copy a value from the referenced record, or default a line from the open document header |
 | [`inlineCreate`](/spec/relations#relation-attributes) | `false` keeps a to-one picker to existing rows - no create-from-the-picker |
