@@ -766,9 +766,7 @@ generates:
     undo: reverse
 ```
 
-A column is named by a report dimension (`Account.id`) or by one of the six balance amounts: `openingDebit`, `openingCredit`, `debit`, `credit`, `closingDebit`, `closingCredit`. `parameters:` binds report parameters to properties of the source record, and must bind `fromDate` and `toDate`. `where:` takes `{ field, op, value }` conditions over the columns; `value: null` with `eq` or `ne` asks whether the cell is empty. `counter:` declares the counter line: the rows whose counter cells other than the amounts are equal share one counter line carrying the sum of their amounts. `undo: reverse` adds an undo action on the source that books the target's [reversal](#reversals-reverse-a-booked-document-red-storno).
-
-This is items mode: the report supplies the lines of one target record. One target record per report row, with no header, is not part of it.
+A column is named by a report dimension (`Account.id`) or by one of the six balance amounts: `openingDebit`, `openingCredit`, `debit`, `credit`, `closingDebit`, `closingCredit`. Three more amounts read the closing balance as one number: `closingBalance` (closing debit minus closing credit), `closingNetDebit` and `closingNetCredit` (that difference on the side it stands on, zero on the other). `parameters:` binds report parameters to properties of the source record, and must bind `fromDate` and `toDate`. `where:` takes `{ field, op, value }` conditions over the columns; `value: null` with `eq` or `ne` asks whether the cell is empty. `counter:` declares the counter line: the rows whose counter cells other than the amounts are equal share one counter line carrying the sum of their amounts. `undo: reverse` adds an undo action on the source that books the target's [reversal](#reversals-reverse-a-booked-document-red-storno).
 
 ::: info Normative
 `items.fromReport` MUST name a `kind: balance` report that declares no `correspondence`, and MUST NOT be combined with `items.from`, `items.refuse`, an `event:` trigger, or a source or target owned by another model. The target's `map` MUST copy the source's key onto the target; a file without it MUST be reported as an authoring error, as MUST an unbound `fromDate` or `toDate`, an unknown column, an amount mapped into a property that is not a decimal, a dimension mapped into a decimal property, and an ordering operator against `null`. The report MUST be run with the source record's values; a record holding no value for a bound property MUST refuse the run rather than read the report's default window.
@@ -777,10 +775,36 @@ Each row satisfying every `where` condition MUST become one line. An amount MUST
 
 A run MUST be refused while a target back-referencing the source is live: not retired by its lifecycle stage, and not reversed by a reversal standing in the status the reversal is offered from. Two concurrent runs for one source MUST NOT both succeed.
 
-`undo: reverse` requires a reversal on the target that declares `backLink`; a file without one MUST be reported as an authoring error. The undo MUST book that reversal against the live target, and MUST refuse a target already reversed, one not in the reversal's `when` status, and a source with no live target. A create-from declaring neither `items.fromReport` nor `undo` MUST generate byte-identical output.
+`undo: reverse` requires a reversal on the target that declares `backLink`; a file without one MUST be reported as an authoring error. The undo MUST book that reversal against the live target, and MUST refuse a target already reversed, one not in the reversal's `when` status, and a source with no live target. `undo: delete` in items mode MUST be reported as an authoring error. The derived columns `closingBalance`, `closingNetDebit` and `closingNetCredit` MUST be computed exactly from the closing debit and credit. A create-from declaring none of `fromReport`, `items.fromReport` and `undo` MUST generate byte-identical output.
 :::
 
 Once the reversal is posted, the closed document is history and the source may be run again - the year is reopened by the same booking an accountant would make by hand. A reversal that should land in the closed year declares no date default, so the twin keeps the original's date.
+
+#### One record per report row — `fromReport:` and `undo: delete`
+
+Next year's opening balances are one record per balance-sheet account - and, where the account keeps a subledger, per counterparty and open document - carrying its closing balance. Without a header, a `fromReport:` on the generation itself makes every qualifying row one record of its own:
+
+```yaml
+generates:
+  - name: openingBalances
+    from: FiscalYear
+    to: OpeningBalance
+    fromReport: YearBalance
+    parameters: { fromDate: startDate, toDate: endDate }
+    where:
+      - { field: Account.ClosingAccount, op: eq, value: null }
+      - { field: closingBalance, op: ne, value: 0 }
+    backReference: Year
+    map: { Account: Account.id, Partner: Partner.id, Document: Document.id,
+           debit: closingNetDebit, credit: closingNetCredit }
+    undo: delete
+```
+
+`parameters:` and `where:` read the report as in items mode. `map:` reads the report's columns, `defaults:` sets literals, and `backReference:` names the record's relation to the source - written on every record, never mapped. `undo: delete` adds an undo action on the source. A settled document nets to nothing - its closing debit and credit are equal - so `closingBalance ne 0` leaves it out, and the net columns carry each open one forward on the side it stands on.
+
+::: info Normative
+`backReference` MUST name a to-one relation of the target to the source, MUST NOT be mapped, and every generated record MUST carry the source in it. The report MUST be run with the source record's values as in items mode; each qualifying row MUST become one record, its amounts written as the exact decimal their properties hold, or the run refused. The records of one run MUST be written as one unit, every refusal decided before the first is written, and a run in which no row qualifies MUST be refused. A run MUST be refused while any record of the target back-references the source; two concurrent runs for one source MUST NOT both succeed. `undo: delete` MUST delete, as one unit and through the target's own rules, exactly the records that back-reference the source, and MUST refuse when there is none. `fromReport` MUST NOT be combined with `items`, `prompt`, `link`, `sourceStatus`, an `event:` trigger, or a source or target owned by another model, and `undo: reverse` in rows mode MUST be reported as an authoring error.
+:::
 
 ### Recorded from the document it settles — `prompt:` and `link:`
 
