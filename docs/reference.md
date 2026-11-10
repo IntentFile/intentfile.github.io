@@ -22,6 +22,7 @@ The quick lookup surface: one line and a minimal snippet per construct. For rule
 | [`function`](/spec/entities#function-the-presentation-role) | an explicit presentation role (Document, Setting, ...) |
 | [`label`](/spec/entities#label-a-stored-display-name) | a stored, read-only display name for lookups |
 | [`label` / `countryLabels` (field)](/spec/entities#label-countrylabels-what-a-field-is-called) | what a field is called, and the variants the tenant's country resolves |
+| [`labels` (field)](/spec/entities#labels-what-a-boolean-reads-as) | the words a boolean field's two values read as, translated like a label |
 | [`number`](/spec/entities#document-numbering) | a platform-numbered, gap-free document field |
 | [`checks`](/spec/entities#checks-declarative-validations) | cross-field / cross-line validations |
 | [`checks: severity: warn` / `duplicate` / `itemsCompare`](/spec/entities#severity-warn-warn-and-confirm-instead-of-refuse) | a check the person saving confirms instead of a refusal |
