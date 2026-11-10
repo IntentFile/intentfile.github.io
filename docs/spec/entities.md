@@ -41,6 +41,7 @@ fields:
 | `unique` | a UNIQUE constraint (e.g. a code or business key) |
 | `label` | what the field is called in the UI, replacing the humanized name (see [what a field is called](#label-countrylabels-what-a-field-is-called)) |
 | `countryLabels` | label variants resolved from the tenant's country rather than the reader's language (see [what a field is called](#label-countrylabels-what-a-field-is-called)) |
+| `labels` | on a `boolean` field, the words its two values read as (see [what a boolean reads as](#labels-what-a-boolean-reads-as)) |
 | `visibleTo` | an allow-list of roles that may read the field, enforced where the data leaves the server (see [Role-scoped field visibility](#role-scoped-field-visibility-visibleto)) |
 | `precision` / `scale` | override the decimal default (16, 2) |
 | `readOnly` | rendered read-only in the UI (e.g. a calculated total) |
@@ -154,6 +155,35 @@ the humanized name, so a model declaring neither behaves as before.
 A `countryLabels` key that is not a country MUST be rejected - it can never match a tenant, and
 would leave the base label rendering with nothing reported. A blank `label:`, and a variant with no
 label, MUST be rejected for the same reason.
+:::
+
+## labels — what a boolean reads as
+
+A boolean value is shown as words, never as `true` / `false`. Without a declaration they are the
+application's shared Yes / No, translated like any other label. Many fields are not a yes/no
+question, and name their own:
+
+```yaml
+fields:
+  - { name: active, type: boolean, labels: { true: Active, false: Inactive } }
+  - { name: base,   type: boolean, labels: { true: Base,   false: Additional } }
+```
+
+The words are written in the default language, as `label:` is, seed the default-language catalog
+next to the field's label, and are translated by the language catalogs the same way. A word YAML
+reads as a boolean itself - `Yes`, `No`, `On`, `Off`, `True`, `False` - is quoted.
+
+::: info Normative
+A boolean value MUST NOT be shown as its raw `true` / `false`: wherever it is shown - a list cell, a
+record's details, a filter's options and its applied-filter text, a form's value options, an export -
+it MUST read as words. A field's `labels: { true: <word>, false: <word> }` gives the words; without
+it they are the application's shared Yes / No. The words MUST seed the default-language catalog next
+to the field's label, and resolve from the reader's language catalog, then the declared word, then
+Yes / No.
+`labels:` on a field that is not a `boolean`, a `labels:` missing `true` or `false` or carrying any
+other key, and an unquoted word that YAML loads as a boolean MUST be rejected. The words never change
+what is stored or filtered on, and a field declaring no `labels:` MUST generate as before, apart
+from its values reading as Yes / No.
 :::
 
 ## unique — a business key over more than one field
