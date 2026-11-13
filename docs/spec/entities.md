@@ -372,6 +372,108 @@ The **language** a copy is minted in is a knob on the snapshot child — `langua
 
 The two knobs are mutually exclusive. Absent both — or when the resolved value is blank — the mint falls back to the first entry of the application's configured language set, resolved at mint time. An unresolvable `languageFrom` path is a generation error, never a silent wrong-language copy. Interactive printing is a separate concern: the print action always renders **live** current data in the language the user picks, while the snapshot panel serves the frozen issued copies — the two coexist on the document's page.
 
+## share — an issued document through a link
+
+A customer or a supplier has no account in the application, and a document they must read cannot
+always travel as a mail attachment: a link is what goes through a messenger or a text message, and
+what a mail body can carry instead of a large file. `share:` on a document entity declares that the
+**issued copy** of its records may be opened through a link a user creates on the record and sends
+on:
+
+```yaml
+- name: SalesInvoice
+  function: Document
+  share:
+    when: "status == ISSUED"      # required - only a record in this state can get a link
+    copy: SalesInvoiceCopy        # required - the function: Snapshot child whose stored file is served
+    roles: [SalesInvoiceShare]    # required - who may create and revoke links; [] admits nobody
+    expiresAfterDays: 0           # optional - 0 (the default) = permanent
+```
+
+| Key | Meaning |
+| --- | --- |
+| `when` | required - a record condition (`<property> ==\|!= <literal>`, a status by its seeded name); only a record in this state can have a link |
+| `copy` | required - the [`function: Snapshot`](#attachments-and-snapshots) composition child of this entity whose stored file a link serves |
+| `roles` | required - the roles, declared under [`permissions`](/spec/surfaces#permissions), that may create and revoke links; an empty list admits nobody, the administrator included |
+| `expiresAfterDays` | optional - the life of a new link in whole days, 0 to 3650; 0, the default, is permanent |
+
+Sharing is declared, never configured. The entities whose documents an anonymous reader may ever
+receive are exactly those that carry a `share:` block, so the question is answered by reading the
+intent; an entity without the block has no links and no way to get one.
+
+- **A link exists only because a user created it** on a record that is in the `when` state and has
+  a stored copy. Issuing the document, or minting its copy, creates none.
+- **The link carries a random token** unrelated to any identifier of the record. Only a hash of it
+  is stored, and the link is disclosed once, when it is created.
+- **Opening it serves the stored file** of the record's newest copy and nothing else - never the
+  live record, a new render, another file or a listing. What the reader sees is what was issued.
+- **A token that does not answer** - unknown, expired, revoked, created in another tenant - gets
+  one and the same not-found answer.
+- **A link can be revoked** at once, and may expire `expiresAfterDays` after it was created.
+- **A record that leaves the `when` state loses its links for good**, whoever moved it: a voided
+  invoice is not readable any more, and bringing the record back into the state revives none of
+  them - a new link is somebody's decision.
+- **Every opening is recorded**, and the record shows, per link, how often and when it was last
+  opened.
+
+A link is a bearer credential - whoever holds it reads the document. That is why a
+[personal](/spec/surfaces#personal-and-partner-surfaces) entity (one that carries a `personal: true`
+relation, or whose composition ancestor does) cannot declare `share:`: a payslip or an employment
+contract stays behind sign-in, and a notification about it carries `{recordUrl}`.
+
+A deployment may let a tenant switch sharing off and shorten the life of new links. Neither setting
+can enable sharing for an entity that does not declare it, or lengthen a declared life.
+
+Not part of the construct: a notify placeholder resolving to a share link, payment or acceptance on
+the page a link opens, a second factor on a link, sharing a report or an arbitrary file.
+
+::: info Normative
+**Declaration.** `share:` MUST declare `when`, `copy` and `roles`; a block missing any of them MUST
+be rejected when the model is read. `when` MUST be a record condition that guards a field or to-one
+relation of the declaring entity. `copy` MUST name an entity of the same model that declares
+`function: Snapshot` and is a composition child of the declaring entity, and the declaring entity
+MUST be a printable document; any other `copy` MUST be rejected. Every entry of `roles` MUST be a
+role declared under `permissions`. `expiresAfterDays`, when present, MUST be a whole number from 0
+to 3650; omitted, it is 0. `share:` on an entity that carries a `personal: true` relation, or whose
+composition ancestor carries one, MUST be rejected.
+
+**Opt-in.** A conforming generator MUST NOT make any file of an entity that declares no `share:`
+reachable through a share link, and MUST NOT offer a setting that does. A deployment MAY let a
+tenant disable sharing or shorten the life of new links; such a setting MUST NOT enable sharing for
+an undeclared entity or lengthen a declared life.
+
+**Creating a link.** A link MUST be created only by an explicit request of an authenticated caller
+holding one of the declared `roles`, on a record that is in the `when` state and has a stored copy;
+any other request MUST be refused. An empty `roles` list MUST admit no caller, whatever other roles
+the caller holds. Issuing a document or minting its copy MUST NOT create a link.
+
+**The token.** A link MUST carry a token of at least 128 bits drawn from a cryptographically secure
+random source, independent of every identifier of the record. Only a hash of the token MUST be
+stored, and the link MUST be disclosed once, in the answer that creates it.
+
+**Opening a link.** A link is opened at an unauthenticated URL carrying the token. The answer MUST
+be the stored file of the record's newest `copy` entry and nothing else - never the live record, a
+new render, another file or a listing. A token MUST resolve only within the tenant its link was
+created in. A token that is unknown, expired, revoked, presented in another tenant, or whose file no
+longer exists MUST receive one and the same not-found answer, indistinguishable between those cases.
+Opening a link MUST NOT read or create an authenticated session and MUST NOT change any record,
+process or task. The answer SHOULD forbid caching and indexing and SHOULD withhold the referrer.
+
+**Revocation and expiry.** A caller holding one of the declared `roles` MUST be able to revoke a
+link, and a revoked link MUST stop answering immediately, on every node of a deployment and across
+restarts. A link whose life has elapsed MUST stop answering; expiry MUST be enforced by the server.
+
+**Leaving the state.** A link of a record that is no longer in the `when` state MUST NOT answer,
+whatever moved the record out of it, and MUST be revoked permanently: a record that returns to the
+state MUST NOT regain it.
+
+**Audit and throttling.** Creating a link, revoking it and every opening of it MUST be recorded, an
+opening with its time, the link, the remote address and the user agent. The record's users holding
+one of the `roles` MUST be able to see each link's state, expiry, number of openings and last
+opening. The unauthenticated URL MUST be rate limited per remote address and per link, and an
+address that repeatedly presents tokens that do not answer MUST be refused for a time.
+:::
+
 ## Setting entities
 
 ```yaml
