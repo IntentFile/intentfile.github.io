@@ -41,6 +41,7 @@ fields:
 | `unique` | a UNIQUE constraint (e.g. a code or business key) |
 | `label` | what the field is called in the UI, replacing the humanized name (see [what a field is called](#label-countrylabels-what-a-field-is-called)) |
 | `countryLabels` | label variants resolved from the tenant's country rather than the reader's language (see [what a field is called](#label-countrylabels-what-a-field-is-called)) |
+| `emptyText` | the text an empty value reads as wherever the field is shown (see [what an empty value reads as](#emptytext-what-an-empty-value-reads-as)) |
 | `visibleTo` | an allow-list of roles that may read the field, enforced where the data leaves the server (see [Role-scoped field visibility](#role-scoped-field-visibility-visibleto)) |
 | `precision` / `scale` | override the decimal default (16, 2) |
 | `readOnly` | rendered read-only in the UI (e.g. a calculated total) |
@@ -154,6 +155,44 @@ the humanized name, so a model declaring neither behaves as before.
 A `countryLabels` key that is not a country MUST be rejected - it can never match a tenant, and
 would leave the base label rendering with nothing reported. A blank `label:`, and a variant with no
 label, MUST be rejected for the same reason.
+:::
+
+## emptyText — what an empty value reads as
+
+For many fields an empty value means something: a loan limit with no value is *no limit*, a
+membership with no expiry date *never* expires, a nickname nobody chose is *not set*. Shown as a
+placeholder mark, or left out of a details block that lists only filled values, the meaning is lost -
+a reader cannot tell "no limit" from "not loaded" - and a sentinel value (`-1`, `9999-12-31`) has to
+be known by every rule, check and report. State it instead:
+
+```yaml
+fields:
+  - { name: maxLoans,  type: integer, readOnly: true, label: Loan limit, emptyText: No limit }
+  - { name: expiresOn, type: date, label: Membership expires, emptyText: Never }
+  - { name: nickname,  type: string, length: 40, emptyText: Not set }
+```
+
+The text is what the record page, its details, the list cells and record sheet, collection panels,
+related-records registers and the subtitle or summary line print for an empty value; a details block
+always shows the field's row. On the create and edit forms it is the placeholder of the field's
+free-text or number input, telling the editor what leaving it empty means. It is written in the
+default language, as `label:` is, and translated the same way. Nothing is stored: the data, the REST
+answers, exports and prints are unchanged.
+
+::: info Normative
+Wherever a conforming generator shows a field's value as a value - a record's page and its details,
+a list cell, a list's record sheet, a collection panel or related-records register, a record's
+subtitle or summary line - an empty value (none, a blank text, an empty list) of a field declaring
+`emptyText: <text>` MUST read as that text. A details block that otherwise shows only filled values
+MUST show the row of such a field. The text MUST be the placeholder of the field's free-text or
+number input on the create and edit forms, and MUST NOT be stored. It MUST seed the default-language
+catalog next to the field's label and resolve from the reader's language catalog, then the declared
+text. A field the reader may not see MUST NOT show its text. The text MUST NOT change what is stored,
+served, exported or printed.
+A blank `emptyText:`, and `emptyText:` on a `boolean`, a `uuid`, the primary key, a `required`
+field, a document `number:`, a `placement: hidden` field, an `aggregate` field, the document title or
+a chat message body, MUST be rejected when the model is read. A model declaring no `emptyText:` MUST
+generate as before.
 :::
 
 ## unique — a business key over more than one field
