@@ -38,7 +38,7 @@ Composition is ownership: the child is a detail of its master, with a NOT NULL k
 ```
 
 - **`cascade`** (the default) — the children go with the master, and each child's deletion is a deletion in full: its own composition children with it (a chain of any depth unwinds), its deletion observed by the reactions bound to it, so aggregates and roll-ups over the child relinquish what they counted. The master's deletion and the children's are one atomic unit.
-- **`refuse`** — the master's delete is rejected while any child of that relation exists, naming both entities. Nothing is deleted; the master becomes deletable once the children have been removed deliberately.
+- **`refuse`** — the master's delete is rejected while any child of that relation exists, naming both entities. The message is resolved for the reader's language like a check message, with both entities named by their translated labels, and it carries its translation key and parameters. Nothing is deleted; the master becomes deletable once the children have been removed deliberately.
 
 ::: info Normative
 A conforming generator must, for every composition, either delete the children with the master or reject the master's deletion — the default is `cascade`, whether or not the key is authored, because it is what composition means. Both outcomes must hold for **every** writer that can delete the master, not only for a delete arriving over a generated interface: a reaction, a scheduled write and a cascade from a further master reach the same rows. `whenMasterDeleted` is valid only on a `composition: true` to-one, and only on the entity's first composition (its composition parent); anywhere else, and for any value other than `cascade` or `refuse`, it is an error.
