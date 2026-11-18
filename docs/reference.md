@@ -112,6 +112,7 @@ entities:
 - { name: period,  type: month }
 - { name: Number,  type: string, number: { series: Sales Invoice, per: Company, stampOn: create } }
 - { name: Status,  kind: manyToOne, to: OrderStatus, function: EntityStatus, init: 1 }
+- { name: Company, kind: manyToOne, to: Company, init: { flag: base } }   # the row holding a single flag
 - { name: City,    kind: manyToOne, to: City, dependsOn: { relation: Country, filterBy: Country } }
 - { name: Product, kind: manyToOne, to: Product, where: { Type: 1 } }
 - { name: Customer, kind: manyToOne, to: Customer, pickable: { when: [registrationNumber != null, address != null], message: "Registration data incomplete" } }
