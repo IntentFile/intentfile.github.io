@@ -39,6 +39,7 @@ fields:
 | `pattern` | an input-format regular expression the value must match (string / text fields only) |
 | `defaultValue` | the field's default: the column default, the reason a `required` field is not demanded from the caller, and the value a **new** row is seeded with in the UI (see [Field defaults](#defaultvalue-field-defaults)) |
 | `unique` | a UNIQUE constraint (e.g. a code or business key) |
+| `single` | on a `boolean`: at most one row holds `true`, among every row or per a to-one relation's value (`single: { per: <relation> }`); a write taking the flag demotes the holder, or is refused with `onConflict: refuse`. With `required: true` the flag never leaves a scope that has rows without a holder: the holder can be neither written `false` nor deleted until another row takes the flag (invalid input naming the field, translated); a scope's first row may be created without it, and its last row may be deleted |
 | `label` | what the field is called in the UI, replacing the humanized name (see [what a field is called](#label-countrylabels-what-a-field-is-called)) |
 | `countryLabels` | label variants resolved from the tenant's country rather than the reader's language (see [what a field is called](#label-countrylabels-what-a-field-is-called)) |
 | `visibleTo` | an allow-list of roles that may read the field, enforced where the data leaves the server (see [Role-scoped field visibility](#role-scoped-field-visibility-visibleto)) |
