@@ -85,7 +85,7 @@ The quick lookup surface: one line and a minimal snippet per construct. For rule
 | [`seeds`](/spec/data#seeds) | initial data, CSV-backed sets, translations |
 | [`multilingual` / `languages`](/spec/data#multilingual-data) | translation tables + read-time translation overlay, on entity reads and report columns alike |
 | [`translatable: false`](/spec/data#keys-are-not-translated) | keeps a key of a multilingual entity out of the translation table, so what a rule matches on cannot be translated out from under it |
-| [`permissions`](/spec/surfaces#permissions) | roles |
+| [`permissions`](/spec/surfaces#permissions) | roles - the ones a person may be given |
 
 ## Snippets
 
