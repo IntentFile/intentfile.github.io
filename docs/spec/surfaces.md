@@ -43,6 +43,12 @@ permissions:
 
 Generates a deduplicated set of **roles**. It deliberately does **not** emit URL-shaped access rules — those belong to whichever downstream template materialises the UI, because only that template knows the paths it publishes. The `can: [Resource:action]` tokens are an authoring hint to those downstream generators about which actions each role may invoke.
 
+The roles a file authors are the roles its people are given. The roles a downstream generator derives for a resource that no grant names are not.
+
+::: info Normative
+A conforming generator MUST declare every role a `permissions:` entry authors as one a person may be given, with its `description`, and MUST NOT mark so a role it derives for a resource that no grant names. A deployment that manages the roles of its people MUST offer the marked roles, MAY add roles of its own, and MUST refuse any other role it is asked to give. The mark grants nothing: what a role may reach is still decided by its `can:` tokens. A role of the deployment itself is never offered to a person through the application.
+:::
+
 ## See also
 
 - [Entities & fields](/spec/entities) — `sensitive` as a field attribute, and the entity a scope attaches to.
