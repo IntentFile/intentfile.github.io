@@ -37,6 +37,7 @@ fields:
 | `required` | NOT NULL; the generated required-value validation keys on this. A field that also carries a default (`defaultValue`, or `init` on a relation) is NOT demanded from the caller - the default satisfies it |
 | `length` | column length for string types |
 | `pattern` | an input-format regular expression the value must match (string / text fields only) |
+| `patternMessage` | what a value off the field's `pattern` is refused with, instead of the generic sentence quoting the regex: written in the default language and translated like a check message, `{label}` (the field's caption) and `{pattern}` interpolated; shown on the server's refusal, which names the field, and as the form input's hint. Requires `pattern` |
 | `defaultValue` | the field's default: the column default, the reason a `required` field is not demanded from the caller, and the value a **new** row is seeded with in the UI (see [Field defaults](#defaultvalue-field-defaults)) |
 | `unique` | a UNIQUE constraint (e.g. a code or business key) |
 | `label` | what the field is called in the UI, replacing the humanized name (see [what a field is called](#label-countrylabels-what-a-field-is-called)) |
