@@ -38,7 +38,7 @@ fields:
 | `length` | column length for string types |
 | `pattern` | an input-format regular expression the value must match (string / text fields only) |
 | `defaultValue` | the field's default: the column default, the reason a `required` field is not demanded from the caller, and the value a **new** row is seeded with in the UI (see [Field defaults](#defaultvalue-field-defaults)) |
-| `unique` | a UNIQUE constraint (e.g. a code or business key) |
+| `unique` | a UNIQUE constraint (e.g. a code or business key); `{ ignoreCase: true }` on a `string` / `text` field refuses a value another record holds in any letter case (see [unique: ignoreCase](#unique-ignorecase-a-key-in-any-letter-case)) |
 | `label` | what the field is called in the UI, replacing the humanized name (see [what a field is called](#label-countrylabels-what-a-field-is-called)) |
 | `countryLabels` | label variants resolved from the tenant's country rather than the reader's language (see [what a field is called](#label-countrylabels-what-a-field-is-called)) |
 | `visibleTo` | an allow-list of roles that may read the field, enforced where the data leaves the server (see [Role-scoped field visibility](#role-scoped-field-visibility-visibleto)) |
@@ -154,6 +154,21 @@ the humanized name, so a model declaring neither behaves as before.
 A `countryLabels` key that is not a country MUST be rejected - it can never match a tenant, and
 would leave the base label rendering with nothing reported. A blank `label:`, and a variant with no
 label, MUST be rejected for the same reason.
+:::
+
+## unique: ignoreCase — a key in any letter case
+
+`unique: true` compares a value exactly, so `QALT1` and `qalt1` are two values. A login name or an e-mail address is one value in any letter case; declare its key so:
+
+```yaml
+- { name: username, type: string, length: 64,  unique: { ignoreCase: true } }
+- { name: email,    type: string, length: 320, format: email, unique: { ignoreCase: true } }
+```
+
+A value another record holds in any letter case is refused, as an exact repeat is. The stored value keeps the case it was written in; storing it lower-cased is `normalize: lower`, the explicit choice where the spelling does not matter. `unique: true` is the same as `unique: {}`.
+
+::: info Normative
+`unique` MUST accept `true`, `false` or a mapping; a mapping MUST make the field unique, and `unique: true` MUST mean the same as an empty mapping. `ignoreCase: true` on a field that is not `string` or `text`, and an unknown key inside the mapping, MUST be reported as authoring errors. With `ignoreCase: true`, a conforming generator MUST refuse a write that gives the field a value another record holds when both are compared ignoring letter case and leading and trailing whitespace, with the refusal an exact repeat gets, on every write of the record through the generated application. It MUST store the value as written, and MUST NOT refuse a record whose stored value is exactly the value being written. A field without `ignoreCase` MUST generate byte-identical output.
 :::
 
 ## unique — a business key over more than one field
