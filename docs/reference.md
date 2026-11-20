@@ -72,6 +72,8 @@ The quick lookup surface: one line and a minimal snippet per construct. For rule
 | [`expansions`](/spec/glue#expansions-child-rows-from-a-date-span) | generated child rows per day / week / month |
 | [`generates`](/spec/glue#generates-create-from) | one-click document-from-document cloning |
 | [`generates.items.where`](/spec/glue#which-source-rows-become-lines-where-refuse) | which of the source document's rows become target lines - and what an unqualified one costs |
+| [`generates.items.fromReport` / `generates.undo`](/spec/glue#lines-read-from-a-report-fromreport-and-undo) | lines read from a balance report's result rows, refused on a second run, undone by the target's reversal |
+| [`generates.fromReport` / `generates.backReference`](/spec/glue#one-record-per-report-row-fromreport-and-undo-delete) | one record per balance report row, refused on a second run, undone by deleting exactly those records |
 | [`generates.prompt` / `generates.link`](/spec/glue#recorded-from-the-document-it-settles-prompt-and-link) | ask for what the source cannot supply (defaults read off the source), and write the source's link row to the new target in the same unit |
 | [`generates.event`](/spec/glue#event-driven-creation-event) | mint the document on a source event - a status write, a create, or a process step |
 | [`generates.event.mode`](/spec/glue#cardinality-mode-once-append) | one target per source (`once`, default) or one per delivered event (`append`) |
