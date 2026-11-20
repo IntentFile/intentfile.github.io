@@ -102,6 +102,12 @@ A [report](/spec/presentation#reports) reads the same data, so it reads it in th
 Every read of a translatable property of a `multilingual: true` entity is served in the caller's requested language, and a report column bound to such a property is such a read. What a report **matches** is unaffected: a report's `filter:`, its [`scope`](/spec/presentation#lifecycle-scope) and any condition applied to it are evaluated against the stored, untranslated values — so translating content can never change which rows a report returns, only how they read. A property with no translation for the requested language, and a caller who requested none, both read the stored value.
 :::
 
+A record has at most one translation per language, and the language is stored as its lower-case code, the one a translation seed declares. Every read of the entity, a search in the reader's language and a report all rely on it, so it holds for whatever writes the translations, not only for the seeds. A translation loaded as `BG`, or a second `bg` translation of the same record, would otherwise read on the form and be missed or counted twice by the report beside it, with no error anywhere.
+
+::: info Normative
+A conforming generator MUST declare on the translation storage of a `multilingual: true` entity that a record has at most one translation per language and that a translation's language is stored as a lower-case code, so that the storage refuses a translation breaking either, whichever writer supplies it. An application deployed before this rule MUST NOT fail to upgrade because its stored translations break it, and its stored translations MUST NOT be changed by the upgrade: the rule is enforced once they comply, and until then the reason it is not enforced MUST be reported.
+:::
+
 #### The language of a render
 
 A **render** — the interactive print, a versioned copy, a document or report attached to a message — has a language of its own: chosen in the print action, or declared by `language:` / `languageFrom:`. That language selects the [template](/spec/presentation#printable-documents), and it is also the language the render's data is read in. A document names its language in its heading and must not contradict it in its body: a Bulgarian invoice reading `ФАКТУРА` over a payment method reading `Bank transfer` is one document in two languages.
