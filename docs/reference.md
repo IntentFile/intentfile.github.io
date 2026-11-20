@@ -82,6 +82,7 @@ The quick lookup surface: one line and a minimal snippet per construct. For rule
 | [`aggregates`](/spec/glue#aggregates-keyed-cross-entity-totals) | keyed cross-entity totals materialised into their own entity |
 | [`posts`](/spec/glue#posts-derived-rows-on-an-event) | derived ledger rows emitted idempotently on an event |
 | [`personal` / `partner`](/spec/surfaces#personal-and-partner-surfaces) | per-user and per-partner row-scoped surfaces |
+| [`owner`](/spec/surfaces#owner-a-mine-filter-on-the-regular-list) | a to-one to an `identity` entity: the regular list offers All / Mine, narrowed to the caller's own rows; no surface is added |
 | [`seeds`](/spec/data#seeds) | initial data, CSV-backed sets, translations |
 | [`multilingual` / `languages`](/spec/data#multilingual-data) | translation tables + read-time translation overlay, on entity reads and report columns alike |
 | [`translatable: false`](/spec/data#keys-are-not-translated) | keeps a key of a multilingual entity out of the translation table, so what a rule matches on cannot be translated out from under it |
