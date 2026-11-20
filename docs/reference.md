@@ -40,6 +40,7 @@ The quick lookup surface: one line and a minimal snippet per construct. For rule
 | [`related`](/spec/relations#related) | a read-only register of the records referencing this entity, on its own page |
 | [`processes`](/spec/processes#processes) | workflows: user tasks, decisions, waits, boundary timers |
 | [task assignment](/spec/processes#task-assignment) | route a user task to a role, the record owner, or a relation walk |
+| [`onClaim` / `onUnclaim`](/spec/processes#onclaim-onunclaim-hold-the-record-while-its-task-is-claimed) | on a user task: the status the trigger record holds while the task is claimed, and returns to when it is unclaimed |
 | [`abortOn`](/spec/processes#aborton-cancel-the-instance-on-a-terminal-status) | cancel the running instance when the document reaches a terminal status |
 | [`retry` / `onError`](/spec/processes#retry-onerror-a-steps-failure-is-part-of-the-model) | a declared retry cycle and an error route for a calling step, with `{error}` recording the final attempt's message on the record |
 | [`function: Attachment` / `Snapshot`](/spec/entities#attachments-and-snapshots) | a Files panel / immutable versioned printed copies |

@@ -198,6 +198,21 @@ Every segment of `path` is a **to-one relation** — the first of the trigger en
 
 `fallback` is **required** and names the candidate group. The walk is resolved when the task is reached, not when the process starts — so a relation an earlier step of the same process set is visible — and when it resolves to nobody (a null hop, a missing record, a blank identity) the task is created **unassigned** and the fallback group can still claim it. That is what makes the unresolvable case total: a resolver path can never mint a task nobody can see.
 
+### onClaim / onUnclaim - hold the record while its task is claimed
+
+A process started when a document is created reaches its first user task while the document is still in the status it was created in, so a `forbidWhen: "SalesOrder.Status != DRAFT"` on its lines freezes nothing while the approver decides. `onClaim` and `onUnclaim` move the trigger record while the task is claimed:
+
+```yaml
+- { name: confirm, kind: userTask,
+    args: { assignee: approver, form: ConfirmSalesOrder,
+            onClaim:   { setRelationField: Status, value: SUBMITTED },
+            onUnclaim: { setRelationField: Status, value: DRAFT } } }
+```
+
+When the task is claimed, by whatever path, the record moves to the `onClaim` value; when it is unclaimed, back to the `onUnclaim` value, and the author can change it again. A task created already assigned counts as claimed from its creation. Each move happens only from the other value, so a task passing from one claimant to another does not move the record, and a record another writer has moved meanwhile is left as it is. The record's lifecycle judges both moves, and a refused move fails the claim. A task that holds its record cannot be completed while nobody has claimed it.
+
+The two are declared together, each `{ setRelationField, value }` on the same to-one relation of the trigger record, with different values (a seeded name or a record id). On the lifecycle status, the lifecycle must declare both edges - here DRAFT to SUBMITTED and back. A task that leaves without completing (a boundary timer, a cancelled instance) does not move the record back.
+
 ## forms
 
 ```yaml
