@@ -96,6 +96,12 @@ entities:
 
 The set of languages the whole stack supports is a platform concern, never defined per module. The top-level `languages:` only declares which languages this module provides.
 
+A data language is named by its two-letter lower-case code, the same code everywhere: in `languages:` and in a translation seed's `language:`. It is the code a reader's requested language is reduced to (`bg-BG` reads as `bg`), so a code of another shape would either fail to load or never be matched.
+
+::: info Normative
+A `languages:` entry and a translation seed's `language:` MUST be an ISO 639-1 language code: two lower-case letters. Any other value - a locale tag, an upper-case code, a three-letter code - is an authoring error naming where it is written and the value.
+:::
+
 A [report](/spec/presentation#reports) reads the same data, so it reads it in the same language: a column bound to a translatable property is shown translated, whether the report is rooted at the multilingual entity or reaches it through a relation. A report grouping by a multilingual nomenclature therefore shows the same term as the pages beside it — before this was stated, a status column could read `DRAFT` next to a list reading the translated word, from the same record.
 
 ::: info Normative
