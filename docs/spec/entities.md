@@ -403,6 +403,12 @@ Row-level and document-level validations, enforced on write / on a status transi
 
 `exactlyOne` and `compare` run on every user write, and so does a `requiredWhen` that names no status; `itemsMin` / `itemsSumEqual` are gated on a status transition, so drafting stays unconstrained and a failing transition aborts with the message.
 
+A refusal reaches the person in their own language. The authored messages are seeded into the default-language translation catalog. So are the refusals the generated application makes on its own: a required value left out, a value longer than its `length`, a value off its `pattern`, and a value repeating a `unique: true` field. Those name the field and the entity by their translated labels (`A Unit of Measure with this 'SAP Code' already exists`). A refusal about one field of the record also names that field beside the message, so the form marks the field it is about, whatever language the message is in. That covers those four and a check whose `field:` is a field of the record itself, such as a `compare` or a `requiredWhen`. A check about no single field, or about a field of a related record, is shown as a message on its own.
+
+::: info Normative
+A conforming generator MUST seed the default-language catalog with the refusals it makes on its own - a required value left out, a value longer than its `length`, a value off its `pattern`, a value repeating a `unique: true` field - and MUST deliver them in the reader's language, naming the field and the entity by their translated labels. A refusal about one field of the record - one of those, or a check whose `field:` is a field of the record itself - MUST name that field in a structured form beside the message, so that a client can mark the field without reading it out of the message.
+:::
+
 ### kind: compare — two values of one row
 
 `compare` relates two of the record's own fields, read as `field <op> than`, where `op` is `ge`, `gt`, `le`, `lt`, `eq` or `ne`. It is the rule every business document has and none of the other kinds can state: a due date never before the invoice date, a validity `to` never before its `from`, a delivery date never before the order date, an amount paid never above the total.
