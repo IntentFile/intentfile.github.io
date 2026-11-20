@@ -61,6 +61,12 @@ A conforming generator must, for every composition, either delete the children w
 ```
 
 - **`function: EntityStatus`** marks the relation as the entity's managed status badge; `init:` seeds its default at the database level (a race-free start). This relation is what [`immutableWhen`](/spec/entities#immutablewhen-immutable-user-write-immutability), [`transitions`](/spec/glue#transitions-guarded-status-flips) and [`postings`](/spec/glue#postings-source-document-to-ledger) key on.
+- **`init: { flag: <field> }`** defaults a to-one relation to the target row holding the named `single` boolean, instead of a fixed record - a document's default company, base currency or default payment method is the row the user has flagged, not the row with id 1: `- { name: Company, kind: manyToOne, to: Company, init: { flag: base } }`. A create that leaves the relation unset takes the holder at the moment of the create, the create form preselects it, moving the flag moves the default for later records, and with no holder the relation stays empty (a `required` one is then refused as missing).
+
+::: info Normative
+For a to-one relation declaring `init: { flag: <field> }`, a conforming generator must, on a create that leaves the relation unset, set it to the target record whose `<field>` is `true` at the time of the create, within the same write, and must leave it unset when no target record holds the flag. It must not emit a fixed default for the relation's storage. A generated create form must preselect the holder when it opens. `<field>` must be a `boolean` of the target with a `single` that is not scoped by `per`; any other field, a scoped flag, a mapping without `flag`, and the form on a `function: EntityStatus` relation are authoring errors. A model declaring no `init: { flag: }` must generate as before.
+:::
+
 - **`dependsOn`** links one dropdown to another: `filterBy` narrows the options to those matching the parent selection; `valueFrom` copies a value from the referenced record (a snapshot).
 - **Conditional source** (field only): `valueFrom` may be `{ by: <path>, cases: { <literal>: <property> }, default: <property>? }` — the copied property is picked by a classifier resolved from the `by` path: an own property, a one-hop `<Relation>.<property>` (the related record is fetched), or — on a document item — a path starting at the composition parent relation, i.e. the open document header. No matching case and no `default` = no copy.
 
