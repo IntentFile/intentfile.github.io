@@ -37,6 +37,7 @@ fields:
 | `required` | NOT NULL; the generated required-value validation keys on this. A field that also carries a default (`defaultValue`, or `init` on a relation) is NOT demanded from the caller - the default satisfies it |
 | `length` | column length for string types |
 | `pattern` | an input-format regular expression the value must match (string / text fields only) |
+| `format` | a named input format instead of a `pattern`: `email` or `iban` (see [format](#format-a-named-input-format)) |
 | `defaultValue` | the field's default: the column default, the reason a `required` field is not demanded from the caller, and the value a **new** row is seeded with in the UI (see [Field defaults](#defaultvalue-field-defaults)) |
 | `unique` | a UNIQUE constraint (e.g. a code or business key) |
 | `label` | what the field is called in the UI, replacing the humanized name (see [what a field is called](#label-countrylabels-what-a-field-is-called)) |
@@ -60,6 +61,36 @@ Generators map each logical type to a physical column type. `text` is a large-ob
 
 ::: info Normative
 **Primary keys must be an integer type** (`integer` / `int` / `long`). A non-integer auto-increment column is invalid, so a `uuid` or string primary key is rejected. `uuid` is valid for non-PK fields.
+:::
+
+### format: a named input format
+
+A `string` field may name its format instead of writing a `pattern`:
+
+```yaml
+fields:
+  - { name: email, type: string, length: 320, format: email }
+  - { name: iban,  type: string, length: 34,  format: iban, normalize: [strip: " ", upper] }
+```
+
+- `email` - an e-mail address: the canonical address shape, and an e-mail input on the form.
+- `iban` - an IBAN (ISO 13616): its shape in the electronic form (two letters, two digits, 11 to 30
+  letters and digits) **and** its check digits. A regular expression sees only the shape, so
+  `BG00BNBG96611020345678` would pass a `pattern`. Its check digits fail ISO 7064 MOD 97-10, so
+  `format: iban` refuses it.
+
+The value is checked as stored, after the field's `normalize` transforms. An IBAN typed in its
+printed form (`BG80 BNBG 9661 1020 3456 78`) is accepted when the field declares
+`normalize: [strip: " ", upper]`. A refusal names the field and is translated like the other
+refusals of one field's value. A blank value of an optional field is not checked.
+
+::: info Normative
+A conforming generator MUST refuse, on a create and on an update, a non-blank value of a field
+declaring `format: iban` unless it matches `^[A-Z]{2}[0-9]{2}[A-Z0-9]{11,30}$` and the number formed
+by moving its first four characters to the end and replacing every letter by its position plus 9
+(`A` = 10 ... `Z` = 35) leaves a remainder of 1 when divided by 97. The value MUST be checked after
+the field's `normalize` transforms, and the refusal MUST name the field. `format` on a field that is
+not a `string`, or beside `pattern`, is an authoring error reported at parse time.
 :::
 
 ### Entity-level attributes
