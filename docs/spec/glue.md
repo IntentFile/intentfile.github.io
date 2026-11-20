@@ -743,6 +743,8 @@ With it, an unqualified row refuses the whole create-from with the authored mess
 
 **A rule that qualifies no row refuses either way.** A document of no lines is not the document that was asked for, and it is the harder failure to notice: it exists, it counts as the period's billing, and it is empty.
 
+**Every refusal of a create-from is in the reader's language.** A run refused — no row qualifying the rule, an unqualified row under `refuse:`, a required `prompt:` input left empty, a source line the target refuses, a report value the target cannot hold — answers like a check message: resolved for the reader's language, the action and the entities named by their translated labels, the translation key and its parameters beside the text. The authored `refuse:` message is a translation entry of the model too, so a language translates it like any check message; an empty required input is refused as the value of that one field, so the dialog marks it. An entity owned by another model is named by its default-language label. Specified by [proposal 0148](https://github.com/IntentFile/intent-specification/pull/242); reference implementation [eclipse-dirigible/dirigible#8677](https://github.com/eclipse-dirigible/dirigible/pull/8677).
+
 The rule belongs to the mirror form of `items:`. The computed form — `items` as a list of synthetic lines over the source record — has no source rows to select from and guards each line with its own `when` cell. An `items` block that declares no `where:` behaves exactly as it did.
 
 ### Recorded from the document it settles — `prompt:` and `link:`
