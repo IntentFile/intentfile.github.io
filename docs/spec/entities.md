@@ -59,6 +59,10 @@ fields:
 Generators map each logical type to a physical column type. `text` is a large-object column; `uuid` is a 36-character string. `month` (a `YYYY-MM` value) and `week` (a `YYYY-Www` ISO-week value) are stored as short strings and render as month / week pickers.
 
 ::: info Normative
+A generator MUST refuse, as invalid input naming the field, a `month` value that is not `YYYY-MM` with a month from `01` to `12`, and a `week` value that is not `YYYY-Www` with a week from `01` to `52`, or `53` in a year that has a 53rd ISO week. A blank value on an optional field is no value, and nothing is normalised into the shape (`2026-5` is refused, not rewritten). The type fixes the shape, so `pattern` and `format` stay authoring errors on these types.
+:::
+
+::: info Normative
 **Primary keys must be an integer type** (`integer` / `int` / `long`). A non-integer auto-increment column is invalid, so a `uuid` or string primary key is rejected. `uuid` is valid for non-PK fields.
 :::
 
@@ -272,6 +276,12 @@ entities:
 ```
 
 The implementation lives in the project's **custom** (escape-hatch) folder, never in the generated folder. For document numbers, use the first-class [`number`](#document-numbering) attribute instead of a calculated action.
+
+A calculated action is part of the record a write would store, so the write's [checks](#checks-declarative-validations) see what it derives - a `duplicate` over a field an action fills is asked on a create that left the field out. The action is therefore a computation, not a side effect.
+
+::: info Normative
+A generator MUST evaluate the create-time and update-time checks against the record with its calculated actions applied, as with its calculated expressions, in declaration order, an action taking precedence over an expression on the same slot; the submitted record MUST NOT be changed by that evaluation. An action MAY be invoked more than once for one write, and for a write that is then refused, so it MUST compute its value from the record and change nothing else: no write, no message, no number drawn from a series.
+:::
 
 ## Document numbering
 
@@ -697,6 +707,22 @@ Rows written outside the generated data-access layer — [seeds](/spec/data#seed
 ```
 
 The list renders as an expandable tree; the server rejects cycles and leaf-only references to a node that has children.
+
+A self-reference that is a tree but wants none of the tree list - a task's parent task - declares the edge alone with `tree: true`. Optional `treeMessage:` replaces the refusal text:
+
+```yaml
+- name: ProjectTask
+  relations:
+    - { name: Parent, kind: manyToOne, to: ProjectTask, tree: true, treeMessage: "A task cannot sit under itself" }
+```
+
+The edge never closes a cycle, and neither does the `hierarchy:` edge, which is a tree edge without the key. A reference that landed on a leaf keeps it one: a node that leaf-only references point at cannot gain a child.
+
+::: info Normative
+For a relation declaring `tree: true`, and for the relation an entity names as its `hierarchy:`, a generator MUST refuse a create or an update whose value for the relation is the row itself or one of its descendants, as invalid input naming the relation, carrying `treeMessage:` where one is declared. The refusal MUST hold for every writer of the entity and under concurrency: two writes that would together close a cycle MUST NOT both commit. A cycle already in the stored data MUST end the walk rather than loop it, and an update MUST be asked only when it changes the relation. `tree: true` on anything but an optional, non-composition `manyToOne` onto the declaring entity in the same model, `treeMessage:` without `tree: true` and a blank `treeMessage:` are authoring errors.
+
+A generator MUST refuse a create of a row of a `hierarchy:` entity, and an update that changes its edge, whose new parent is referenced through any `leafOnly: true` relation - whatever model declares it - as invalid input naming each referencing entity and the number of its rows. A child and a leaf-only reference written to the same node concurrently MUST NOT both commit.
+:::
 
 ## See also
 

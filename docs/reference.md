@@ -31,7 +31,8 @@ The quick lookup surface: one line and a minimal snippet per construct. For rule
 | [`phases`](/spec/entities#phases-a-moment-an-enrichment-announces) | the enrichment moments an entity announces, so a silent write has a channel a consumer can bind |
 | [`locksWithMaster`](/spec/entities#lockswithmaster-a-child-collection-that-outlives-its-masters-lock) | a child collection that stays writable while its master is locked |
 | [`history`](/spec/entities#history-the-change-trail) | a shadow, append-only trail of every write: property, old and new value, who, when, user or system |
-| [`hierarchy` / `leafOnly`](/spec/entities#hierarchy-leafonly-tree-entities) | tree entities, leaf-only references |
+| [`hierarchy` / `leafOnly`](/spec/entities#hierarchy-leafonly-tree-entities) | tree entities, leaf-only references; a referenced leaf cannot gain a child |
+| [`tree` / `treeMessage`](/spec/entities#hierarchy-leafonly-tree-entities) | a same-entity `manyToOne` that never closes a cycle, without the tree list of `hierarchy` |
 | [calculated fields](/spec/entities#calculated-fields) | server + UI-evaluated expressions, date helpers, call-outs |
 | [`relations` / `composition`](/spec/relations#relations) | associations and master-detail compositions |
 | [`relations` / `pickable`](/spec/relations#which-target-rows-a-picker-offers-pickable) | which target rows a to-one's picker offers: a failing row listed disabled with a message, or left out |
@@ -67,7 +68,7 @@ The quick lookup surface: one line and a minimal snippet per construct. For rule
 | [`imports`](/spec/glue#imports-a-file-uploaded-into-rows) | an uploaded file (CSV with locale rules, MT940, camt.053) read into rows, whole or not at all, refused when it repeats a duplicate key |
 | [`outbound`](/spec/glue#outbound-departures-on-a-queue-or-a-topic) | a record emitted on a queue or a topic when an event fires |
 | [`exports`](/spec/glue#exports-a-file-in-an-exacting-format-over-a-query) | a fixed-width, delimited or XML file over an entity or a report, every run recorded on a ledger entity |
-| [`rollups`](/spec/glue#rollups-denormalised-parent-totals) | counts, sums, balance + status maintenance |
+| [`rollups`](/spec/glue#rollups-denormalised-parent-totals) | counts, sums (decimal or integral columns), balance + status maintenance with one or both status seeds |
 | [`settlements`](/spec/glue#settlements-payment-allocation) | auto-allocation of payments across open invoices |
 | [`expansions`](/spec/glue#expansions-child-rows-from-a-date-span) | generated child rows per day / week / month |
 | [`generates`](/spec/glue#generates-create-from) | one-click document-from-document cloning |
