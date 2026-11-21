@@ -25,6 +25,7 @@ The quick lookup surface: one line and a minimal snippet per construct. For rule
 | [`number`](/spec/entities#document-numbering) | a platform-numbered, gap-free document field |
 | [`checks`](/spec/entities#checks-declarative-validations) | cross-field / cross-line validations |
 | [`checks: severity: warn` / `duplicate` / `itemsCompare`](/spec/entities#severity-warn-warn-and-confirm-instead-of-refuse) | a check the person saving confirms instead of a refusal |
+| [`checks: duplicate` + `status` + `among`](/spec/entities#duplicate-with-a-status-gate-refused-at-the-move-into-a-status) | a duplicate refused at the move into a status, counting only rows in the listed statuses |
 | [`checks: kind: guard`](/spec/entities#kind-guard-a-precondition-over-an-aggregate) | a precondition over an aggregate: block, mark for a task, or reject |
 | [`immutableWhen` / `immutable`](/spec/entities#immutablewhen-immutable-user-write-immutability) | reject user writes in a status / append-only |
 | [`lifecycle`](/spec/entities#lifecycle-the-legal-status-graph) | the whole legal status graph, enforced on every status write |
