@@ -109,6 +109,7 @@ entities:
 ```yaml
 - { name: code,    type: string, unique: true, length: 30 }
 - { name: total,   type: decimal, precision: 18, scale: 2, readOnly: true }
+- { name: net,     type: decimal, scale: 4, roundTo: SalesInvoice.Currency.rounding }   # the currency's minor units
 - { name: period,  type: month }
 - { name: Number,  type: string, number: { series: Sales Invoice, per: Company, stampOn: create } }
 - { name: Status,  kind: manyToOne, to: OrderStatus, function: EntityStatus, init: 1 }

@@ -43,6 +43,7 @@ fields:
 | `countryLabels` | label variants resolved from the tenant's country rather than the reader's language (see [what a field is called](#label-countrylabels-what-a-field-is-called)) |
 | `visibleTo` | an allow-list of roles that may read the field, enforced where the data leaves the server (see [Role-scoped field visibility](#role-scoped-field-visibility-visibleto)) |
 | `precision` / `scale` | override the decimal default (16, 2) |
+| `roundTo` | round a money amount to its currency's minor units: a to-one path ending in an integer field (see [roundTo](#roundto-an-amount-in-its-currency-s-minor-units)) |
 | `readOnly` | rendered read-only in the UI (e.g. a calculated total) |
 | `major: false` | keep the column off the compact list table (still on the detail page) |
 | `size` | form control width on a 12-column grid |
@@ -272,6 +273,28 @@ entities:
 ```
 
 The implementation lives in the project's **custom** (escape-hatch) folder, never in the generated folder. For document numbers, use the first-class [`number`](#document-numbering) attribute instead of a calculated action.
+
+### roundTo - an amount in its currency's minor units
+
+A money amount is stated in a currency, and a currency has its own number of decimals: none for a yen, two for a euro, three for a dinar. A column's `scale` is one number for every row, and an expression cannot read the currency, so a yen invoice line of 3 x 333.33 would store 999.99. `roundTo:` names where the record finds the digits:
+
+```yaml
+- name: SalesInvoice
+  fields:
+    - { name: total, type: decimal, scale: 4, aggregate: true, roundTo: Currency.rounding }
+  relations:
+    - { name: Currency, kind: manyToOne, to: Currency }
+- name: SalesInvoiceItem
+  fields:
+    - { name: net, type: decimal, scale: 4, roundTo: SalesInvoice.Currency.rounding,
+        calculatedOnCreate: "Quantity * Price", calculatedOnUpdate: "Quantity * Price" }
+```
+
+The yen line stores 1000. A value the caller sends, a calculated value and a document total are all rounded half up to those decimals before checks, roll-ups and aggregates read them. A calculated value is evaluated straight to them, so 0.495 is 0 in a currency without minor units, not 1.
+
+::: info Normative
+`roundTo:` is valid on a `decimal` field that is not the primary key. It is a path of to-one relations from the record ending in an integer field; a relation to another model may only be the last relation. The value is rounded half up to that many decimals, never to more than the field's `scale`, and to the `scale` when the path reaches no value (no currency chosen). A value with more decimals is rounded, not refused. Give a money column a `scale` at least the largest number of decimals any currency it holds has.
+:::
 
 ## Document numbering
 
