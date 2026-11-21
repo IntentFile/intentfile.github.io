@@ -96,6 +96,12 @@ entities:
 
 The set of languages the whole stack supports is a platform concern, never defined per module. The top-level `languages:` only declares which languages this module provides.
 
+A module's `languages:` declares its intent; what its data holds is what its translation tables hold. Whether a multilingual entity's data is translated into a language is answered by counting its records that have no translation row in that language.
+
+::: info Normative
+An implementation that reports untranslated data MUST judge each `multilingual: true` entity by its stored translations: per supported language other than the default one, the number of its records and of those with no translation in that language. It MUST NOT report an entity whose records are all translated because the module does not declare the language, nor leave one unreported because the module declares it. It MAY fall back to the `languages:` declaration only for a module whose stored translations cannot be read. The counts are given only to a reader who may read the entity.
+:::
+
 A [report](/spec/presentation#reports) reads the same data, so it reads it in the same language: a column bound to a translatable property is shown translated, whether the report is rooted at the multilingual entity or reaches it through a relation. A report grouping by a multilingual nomenclature therefore shows the same term as the pages beside it — before this was stated, a status column could read `DRAFT` next to a list reading the translated word, from the same record.
 
 ::: info Normative
