@@ -95,7 +95,13 @@ notifications:
 
 Add **`attach: print`** and the message carries the record's **own document** — the record rendered through its [print template](/spec/presentation#printable-documents) and attached. This is the declarative form of the most common outbound action a business document has: the invoice to its customer, the payslip to its employee, a reminder that carries the invoice it is about.
 
-The **render language**: `language:` fixes it; `languageFrom: <relation>.<field>` reads it per record from a one-hop to-one path of the entity the message is about (mutually exclusive with `language:`). Absent both — or when the resolved value is blank — the render falls back to the first entry of the application's configured language set at send time. It selects the print template and the language the attached document's own data is read in, both: see [the language of a render](/spec/data#the-language-of-a-render). It does not govern the message's `subject` and `body` — an attachment is a contractual document and belongs in the document's language, while the covering message belongs in the recipient's.
+The **language** of the message: `language:` fixes it; `languageFrom: <relation>.<field>` reads it per record from a one-hop to-one path of the entity the message is about (mutually exclusive with `language:`). Absent both — or when the resolved value is blank — the first entry of the application's configured language set is used at send time. It selects the print template and the language the attached document's own data is read in, both: see [the language of a render](/spec/data#the-language-of-a-render).
+
+It is also the language the message's own **texts** are written in. The authored `subject`, `body` and `html` are the default-language texts: a generator seeds them in the default-language translation catalog, one entry per notify block, and the catalogs of the other languages translate them as they translate a label. A message goes out with the texts of its language where the catalog has them and the authored ones otherwise, its `{placeholder}`s filled after the translation is chosen, so a translation may move them. One file therefore serves a Bulgarian and an English counterparty alike, each reading the cover and the document in their own language - and the language of the person whose action sends the message plays no part. A block without an attachment may declare `language:` / `languageFrom:` too, for its texts alone, under the same rules. The translatable values a placeholder interpolates are read as before: whether they follow the message's language is not settled here.
+
+::: info Normative
+A generator MUST seed the default-language catalog with every notify block's `subject`, `body` and `html`, keyed per block, and MUST deliver each message in one language: its attachment's where it has one, else the block's `language` / `languageFrom`, else the default language - never the language of the person or event whose action sends it. The texts MUST be the catalog's in that language where the catalog has an entry and the authored ones otherwise, with placeholders resolved after the translation is chosen. `language` / `languageFrom` on a block without `attach` MUST be accepted under the rules that hold with one.
+:::
 
 ```yaml
     notify:
@@ -103,7 +109,7 @@ The **render language**: `language:` fixes it; `languageFrom: <relation>.<field>
       subject: "Invoice {number}"        # {field} and {relation.field} interpolation
       body: "Dear {Customer.name}, please find invoice {number} attached."
       attach: print                      # render THIS record's print template and attach it
-      language: bg                       # optional FIXED print-template language
+      language: bg                       # optional FIXED language - of the document and of the texts
       # or per record: languageFrom: Customer.locale  (a one-hop relation.field holding the code)
 ```
 
@@ -168,7 +174,7 @@ The mirror shape: the related rows are only the **recipient list**, and the docu
       attach: recordPrint                           # the RECORD's document, rendered once
 ```
 
-`recordPrint` is only meaningful inside a fan-out and is rejected without one — outside a fan-out `attach: print` already renders that very record. It is the **anchor** that must be a document (the row need not be), and `language` / `languageFrom` then select the anchor's render language, read off the anchor: there is exactly one render for the whole fan-out, and the same result is attached to every message.
+`recordPrint` is only meaningful inside a fan-out and is rejected without one — outside a fan-out `attach: print` already renders that very record. It is the **anchor** that must be a document (the row need not be), and `language` / `languageFrom` then select the anchor's render language, read off the anchor: there is exactly one render for the whole fan-out, and the same result is attached to every message - each of which is written in that language too.
 
 ::: info Which record a path reads is written down, never inferred
 Inside a fan-out a **bare** path — the recipient, `{field}`, `{Relation.field}` — resolves against the **ROW**, and the reserved prefix `record.` is the only way to address the anchor: `{record.<field>}` names one field of it, and a longer path is rejected. The recipient can never be record-scoped: the rows *are* the recipients, so a record-scoped address would send the same message to the same address once per row. `record.` outside a fan-out is rejected too, since there every bare path already resolves against the record. Nothing in a rendered message would reveal that the wrong record had been read — so the scope is authored, not guessed.
