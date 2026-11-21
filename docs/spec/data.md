@@ -102,6 +102,12 @@ A [report](/spec/presentation#reports) reads the same data, so it reads it in th
 Every read of a translatable property of a `multilingual: true` entity is served in the caller's requested language, and a report column bound to such a property is such a read. What a report **matches** is unaffected: a report's `filter:`, its [`scope`](/spec/presentation#lifecycle-scope) and any condition applied to it are evaluated against the stored, untranslated values — so translating content can never change which rows a report returns, only how they read. A property with no translation for the requested language, and a caller who requested none, both read the stored value.
 :::
 
+A read in a translated language shows the translation, so what a reader sends back is the translation, not the record's own value. A write made in that language must not store it as the record's own value: a reader who changed only the price of a unit of measure would otherwise replace its stored name with the translation they were shown, for every reader.
+
+::: info Normative
+A write to a `multilingual: true` entity made in a language in which the record has a translation MUST keep the stored value of every property that language translates, and MUST write every other property as sent; this holds for every write that replaces the record's values, including one merged onto a read of the record. A write made in a language in which the record has no translation writes every property as sent. A write never changes a translation.
+:::
+
 #### The language of a render
 
 A **render** — the interactive print, a versioned copy, a document or report attached to a message — has a language of its own: chosen in the print action, or declared by `language:` / `languageFrom:`. That language selects the [template](/spec/presentation#printable-documents), and it is also the language the render's data is read in. A document names its language in its heading and must not contradict it in its body: a Bulgarian invoice reading `ФАКТУРА` over a payment method reading `Bank transfer` is one document in two languages.
