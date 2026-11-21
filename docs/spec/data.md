@@ -143,6 +143,23 @@ A property marked `translatable: false` carries no per-language value: no column
 
 Generation also emits a per-project translation catalogue for every generated label: entity names (a humanised singular plus a plural form), field labels, form and report names, and report column headers. The default locale is generated for you; a translator adds a sibling locale folder with the same keys. The UI renders through these keys, falling back to the baked default label for any key a locale has not translated.
 
+A message delivered from the catalog - a refusal or a warning - follows the catalog's two conventions for words that change with their context. When its parameters carry a whole-number `count`, the entry `<key>_<category>` is chosen by the count's plural category in the catalog's language (`zero`, `one`, `two`, `few`, `many`, `other`), and the plain `<key>` stays the fallback, so a catalog written before keeps working:
+
+```json
+{
+  "checks": {
+    "deleteReference_one": "{count} запис ({label, lowercase})",
+    "deleteReference_other": "{count} записа ({label, lowercase})"
+  }
+}
+```
+
+A label that sits inside a sentence opts into lower case per phrase with `{name, lowercase}` (or `{{name, lowercase}}`): each word is lower-cased except one of more than one letter written entirely in capitals, so "Ставка ДДС" reads "ставка ДДС". A language that keeps a label's capital mid-sentence simply writes `{name}`.
+
+::: info Normative
+When the parameters of a catalog message carry a whole-number `count`, a conforming generator MUST resolve the entry `<key>_<category>`, where `<category>` is the CLDR cardinal plural category of the count in the catalog's language, before `<key>`, and MUST fall back to `<key>` when that entry is absent. It MUST insert a `{name, lowercase}` or `{{name, lowercase}}` placeholder lower-cased word by word, keeping a word of more than one letter that is entirely in capitals, and MUST leave a value whose format it does not know as it is. It MUST seed the default-language catalog with the plural forms of a message it delivers with a `count`.
+:::
+
 ## Naming and tables
 
 - The top-level `name:` is the intent's identity. Single-file outputs are named after it; the physical table prefix is its upper-snake form.
