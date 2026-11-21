@@ -26,6 +26,7 @@ The quick lookup surface: one line and a minimal snippet per construct. For rule
 | [`checks`](/spec/entities#checks-declarative-validations) | cross-field / cross-line validations |
 | [`checks: severity: warn` / `duplicate` / `itemsCompare`](/spec/entities#severity-warn-warn-and-confirm-instead-of-refuse) | a check the person saving confirms instead of a refusal |
 | [`checks: kind: guard`](/spec/entities#kind-guard-a-precondition-over-an-aggregate) | a precondition over an aggregate: block, mark for a task, or reject |
+| [`checks: kind: notExists`](/spec/entities#kind-notexists-a-status-move-refused-while-a-matching-row-of-another-entity-exists) | a status move refused while a row of another entity matches; `{count}` in the message |
 | [`immutableWhen` / `immutable`](/spec/entities#immutablewhen-immutable-user-write-immutability) | reject user writes in a status / append-only |
 | [`lifecycle`](/spec/entities#lifecycle-the-legal-status-graph) | the whole legal status graph, enforced on every status write |
 | [`phases`](/spec/entities#phases-a-moment-an-enrichment-announces) | the enrichment moments an entity announces, so a silent write has a channel a consumer can bind |
