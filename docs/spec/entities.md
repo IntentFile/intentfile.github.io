@@ -455,6 +455,26 @@ Every other check refuses the write. Some rules are not refusals: a second custo
 
 A warning is enforced where the record is written, not only in a form: an unconfirmed write is answered with the list of warnings (each a stable code and its message) and nothing is written; the same write repeated with the codes it confirms goes through. A confirmation covers only the codes it names. A process step or a scheduled job writes on nobody's behalf and is never stopped by a warning.
 
+### duplicate with a status gate — refused at the move into a status
+
+A `duplicate` with a `status:` gate is not a warning: it refuses the move into that status while another record with the same values holds one of the statuses `among` lists. Two draft bills from one supplier with the same supplier invoice number may coexist (a recurring schedule drafts with a placeholder, a clerk re-keys a bill), but the second may not be approved while the first is approved, partially paid or paid — the same paper booked twice. A `unique:` key is wrong here, because it refuses the drafts and keeps refusing after a bill is cancelled.
+
+```yaml
+- name: Bill
+  checks:
+    # asked while drafting, as before
+    - { kind: duplicate, fields: [Supplier, supplierNumber], message: "Already entered: {match}" }
+    # refused at approval
+    - { kind: duplicate, fields: [Supplier, supplierNumber], status: APPROVED,
+        among: [APPROVED, PARTIAL, PAID],
+        message: "This supplier invoice number is already approved for this supplier: {match}" }
+```
+
+- The check runs whenever the record is stored carrying the gate status — a transition, a process step, an update — and refuses the write, storing nothing. The values compare as the warning compares them (text ignoring case and surrounding spaces), the record never counts against itself, and `{match}` names the record it collides with.
+- `among` is required with the gate, and names statuses of the record's own nomenclature. There is no default: a record in a status it leaves out (a cancelled bill, a draft) never refuses anything.
+- `severity: warn` is rejected with the gate (nobody can confirm a warning at a transition); `severity: error` is optional.
+- Two such moves at the same time cannot both pass.
+
 ### kind: guard — a precondition over an aggregate
 
 A guard compares a keyed [aggregate](/spec/glue#aggregates-keyed-cross-entity-totals) against a minimum and decides what a violating write does:
