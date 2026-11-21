@@ -434,6 +434,34 @@ The alternative — a hand-written calculated action that recomputes the offendi
 
 `status:` is optional, and its presence decides WHEN the rule is evaluated. Without it the rule holds on every user write. With it the rule is evaluated when the record is persisted carrying that status — the transition that sends the document, not the drafting before it, which is what makes the rule expressible at all: a record being typed has not chosen how it will be sent.
 
+### kind: notExists — a status move refused while a matching row of another entity exists
+
+Some moves must wait for the rows of another entity. A month must not be closed while a draft journal entry is dated inside it, because once it is closed the entry can no longer be posted. A deal must not be marked lost while one of its quotations is accepted or ordered. A transition's guard reads only the record's own fields, so neither rule can be written there.
+
+```yaml
+- name: FiscalPeriod
+  checks:
+    # the entries belong to the month by their date - no reference between the two
+    - kind: notExists
+      entity: JournalEntry
+      where: ["Status == DRAFT", "date >= fromDate", "date <= toDate"]
+      status: CLOSED
+      message: "{count} draft entries are dated in this period - post or delete them before closing it"
+- name: Opportunity
+  checks:
+    # the quotation references the deal; its model uses this one, so it is named by model
+    - { kind: notExists, entity: Quotation, model: quotations, match: { Opportunity: id },
+        where: "Status in [2, 3]", status: LOST,
+        message: "A deal with an accepted or ordered quotation is not marked lost" }
+```
+
+- `status` is required: it is the move into that status that is refused, by every writer of it - the button, a process step and a direct edit.
+- `match` maps a property of `entity` to a path on the record. A reference of `entity` to this record matches the record's `id`.
+- `where` filters the rows of `entity`: `<property> <op> <value or path on this record>` with `op` one of `==`, `!=`, `>=`, `<=`, `>`, `<`; `== null` / `!= null`; or `<property> in [a, b]`. A status name there is one of the target's own statuses. At least one of `match` and `where` is required.
+- `{count}` in the message is the number of rows that refuse the move. A row in another status, or dated outside the window, does not block it.
+- `model` may name a model the file does not use - typically one that uses this model, so it cannot be used back. Its rows are found by name when the check runs, and a model that is not deployed has none. Its statuses are written as numeric ids.
+- A matching row created at the same moment as the move is either counted or stored after the move.
+
 ### severity: warn — warn and confirm instead of refuse
 
 Every other check refuses the write. Some rules are not refusals: a second customer with the same name is legitimate (two companies may share a registered name under different registration numbers), yet the person typing it should be asked first; a document line at price zero may be a gift or a typing mistake. The soft tier states those rules — the write stays possible, and the person saving it is told and confirms.
