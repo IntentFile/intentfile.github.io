@@ -661,6 +661,12 @@ The excess MUST be released from the most recently created allocations first, re
 Because every run recomputes, a re-delivered or replayed change MUST leave the allocation unchanged.
 :::
 
+A document's `total` can also grow after the document became payable: a debit note raises a bill, a charge is added to an issued invoice. The money its payer already has on account then settles the amount that opened, by the same rules as when the document became payable. Only the growth of the total is a reason: a lower `paid` amount, such as an allocation a person removed by hand, does not put the allocation back.
+
+::: info Normative
+A conforming generator MUST run the document-side allocation when the settled document's `total` increases while the document is in one of `payableStatuses`, by the same rules as when the document became payable: payments in `order`, matched on `match`, each contributing its unallocated balance, up to the document's open amount, the `total` less the amounts already allocated to it through the `junction`. A change of the document's `paid` amount alone MUST NOT trigger it, so an allocation removed by hand is not restored. A repeated run MUST leave the allocation unchanged, and two runs for the same document MUST NOT together allocate more than its open amount.
+:::
+
 Allocation is eventually consistent, not transactionally exact, under concurrency — like every other recompute-on-event construct here.
 
 ## expansions — child rows from a date span
