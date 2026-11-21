@@ -717,6 +717,25 @@ generates:
 
 Adds a button on the source view; the clone saves through the target's own layer, so numbering, status init and calculated fields fire. An optional `sourceStatus` flips the source record's status once the target exists.
 
+### Who may run it — `when:`
+
+A create-from may be guarded by the source's own values, with the message a refused invocation receives:
+
+```yaml
+generates:
+  - name: invoice-from-template
+    from: InvoiceTemplate
+    to: SalesInvoice
+    forEntity: InvoiceTemplate
+    when: ["active == true", "Customer != null"]
+    whenMessage: "Activate the template first"
+    map: { Customer: Customer, Template: id }
+```
+
+The condition is read in the vocabulary of a `forbidWhen` check over the record's own values: one comparison, or a list that must all hold, each comparing a field or to-one relation of the source with `==` / `!=` against a literal, a seeded status name or `null`. It is what `fromStatus` is for a source whose eligibility is a plain field rather than a status — a paused template, a record still missing a reference.
+
+**Normative.** A create-from declaring `when` MUST be refused, with its `whenMessage`, when the condition does not hold on the source; the refusal is decided before anything is created, against the source as it stands when the target is created. The button MUST NOT be offered on a record for which the condition does not hold; the refusal on the action's own endpoint remains the enforcement. When `fromStatus` is declared too, both apply. `when` without `whenMessage` (and the reverse), a comparison that does not read against the source, and `when` on a create-from that contributes no button, on an action scoped to the whole view or on a scheduled generation MUST be rejected.
+
 ### Which source rows become lines — `where:` / `refuse:`
 
 The `items:` block above clones **every** row of the source document, which is only right when the whole document qualifies. Usually it does not: an unapproved member timesheet must not reach the customer's invoice, and one with no hours at all is a line the target refuses outright — so a single unfinished row stopped the whole month from being invoiced, with nothing the model able to say otherwise. `where:` is the source-row rule:
