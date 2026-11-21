@@ -71,6 +71,7 @@ The quick lookup surface: one line and a minimal snippet per construct. For rule
 | [`settlements`](/spec/glue#settlements-payment-allocation) | auto-allocation of payments across open invoices |
 | [`expansions`](/spec/glue#expansions-child-rows-from-a-date-span) | generated child rows per day / week / month |
 | [`generates`](/spec/glue#generates-create-from) | one-click document-from-document cloning |
+| [`generates.when`](/spec/glue#who-may-run-it-when) | a condition over the source's own values the create-from must satisfy, refused with `whenMessage` |
 | [`generates.items.where`](/spec/glue#which-source-rows-become-lines-where-refuse) | which of the source document's rows become target lines - and what an unqualified one costs |
 | [`generates.prompt` / `generates.link`](/spec/glue#recorded-from-the-document-it-settles-prompt-and-link) | ask for what the source cannot supply (defaults read off the source), and write the source's link row to the new target in the same unit |
 | [`generates.event`](/spec/glue#event-driven-creation-event) | mint the document on a source event - a status write, a create, or a process step |
