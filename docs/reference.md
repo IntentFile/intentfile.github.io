@@ -23,7 +23,7 @@ The quick lookup surface: one line and a minimal snippet per construct. For rule
 | [`label`](/spec/entities#label-a-stored-display-name) | a stored, read-only display name for lookups |
 | [`label` / `countryLabels` (field)](/spec/entities#label-countrylabels-what-a-field-is-called) | what a field is called, and the variants the tenant's country resolves |
 | [`number`](/spec/entities#document-numbering) | a platform-numbered, gap-free document field |
-| [`checks`](/spec/entities#checks-declarative-validations) | cross-field / cross-line validations |
+| [`checks`](/spec/entities#checks-declarative-validations) | cross-field / cross-line validations; every refusal a person reads is a [translated catalog entry](/spec/entities#every-refusal-is-a-catalog-entry) |
 | [`checks: severity: warn` / `duplicate` / `itemsCompare`](/spec/entities#severity-warn-warn-and-confirm-instead-of-refuse) | a check the person saving confirms instead of a refusal |
 | [`checks: kind: guard`](/spec/entities#kind-guard-a-precondition-over-an-aggregate) | a precondition over an aggregate: block, mark for a task, or reject |
 | [`immutableWhen` / `immutable`](/spec/entities#immutablewhen-immutable-user-write-immutability) | reject user writes in a status / append-only |
