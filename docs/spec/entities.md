@@ -434,6 +434,16 @@ The alternative — a hand-written calculated action that recomputes the offendi
 
 `status:` is optional, and its presence decides WHEN the rule is evaluated. Without it the rule holds on every user write. With it the rule is evaluated when the record is persisted carrying that status — the transition that sends the document, not the drafting before it, which is what makes the rule expressible at all: a record being typed has not chosen how it will be sent.
 
+### Every refusal is a catalog entry
+
+A check's `message:` is not the only sentence a generated application refuses a person with. The status guards of `transitions:` and of a create-from, a `lifecycle:` move, a record locked by `immutable` / `immutableWhen` / `immutableInPeriod` and the lock a master passes to its details, a status only the workflow moves, a `fixedAfterCreate` / `fixedWhenReferenced` field, a roll-up capacity, a `leafOnly` reference, a hierarchy cycle, a missing required value and a create-from's undo all refuse too. Each of them is an entry of the model's catalog under `checks.<key>`, resolved for the reader's language exactly as a check's message is: a sentence every model shares has one fixed key, an authored one (a roll-up `message:`, a `reversals: refuse:` message) a key of its own.
+
+::: info Normative
+A refusal names an entity, an action and a property by its catalog label, and a status by the label of its row in the reader's language - translated when the status entity is `multilingual`. A refusal about one property carries that property as its field. A transition's and a create-from's refusal carry the same message, key, parameters and field as every other refusal. An authored roll-up `message:` is a catalog entry whose `{capacity}`, `{sum}`, `{requested}` and `{remaining}` are placeholders filled after translation.
+:::
+
+A sentence shared by every model is resolved from the application's catalog in the reader's language, then from the translation the runtime ships, then from its default text - so an application with no catalog of the reader's language still refuses in that language when the runtime ships it.
+
 ### severity: warn — warn and confirm instead of refuse
 
 Every other check refuses the write. Some rules are not refusals: a second customer with the same name is legitimate (two companies may share a registered name under different registration numbers), yet the person typing it should be asked first; a document line at price zero may be a gift or a typing mistake. The soft tier states those rules — the write stays possible, and the person saving it is told and confirms.
