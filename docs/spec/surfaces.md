@@ -49,6 +49,21 @@ The roles a file authors are the roles its people are given. The roles a downstr
 A conforming generator MUST declare every role a `permissions:` entry authors as one a person may be given, with its `description`, and MUST NOT mark so a role it derives for a resource that no grant names. A deployment that manages the roles of its people MUST offer the marked roles, MAY add roles of its own, and MUST refuse any other role it is asked to give. The mark grants nothing: what a role may reach is still decided by its `can:` tokens. A role of the deployment itself is never offered to a person through the application.
 :::
 
+A resource a grant names is gated by the roles the file authors for it, in place of the roles a generator derives for a resource that no grant names. A grant that only adds a role, and leaves the gate otherwise as it is, is declared `additive`:
+
+```yaml
+permissions:
+  - { role: Employee, can: [LeaveType:read], additive: true }
+```
+
+`LeaveType` is then read by its derived read and write roles and by `Employee`, and written by its derived write role. Only `Employee` is a role the file authors, so only it is offered to a person; the derived roles keep working for the machine clients that hold them. Without the key the file would have to author the derived role names itself to keep them, which turns them into roles offered to people.
+
+An additive entry never removes a role from a gate: whether a resource keeps its derived roles, and whether it takes the roles a deployment adds to every gate (an entry declaring `exclusive: true` keeps those off the resources it binds), is decided by the other entries alone. A resource a generator derives no role for (an export) has nothing to keep, so the roles of the entries naming it are its gate, additive or not.
+
+::: info Normative
+A `permissions` entry declaring `additive: true` MUST add its role to the gates of every resource it binds - the read gate for a read action, the write gate and the read gate for a write action - and MUST NOT remove a role from them. A resource that only additive entries bind MUST keep the roles a generator derives for it as its gate, declared and not marked as roles a person may be given. A resource that another entry also binds is gated by that entry's roles and the additive role; a resource an `exclusive` entry binds stays closed to the roles a deployment adds to every gate. A composition child with no grants of its own follows its master's gate, the added roles included, and an additive entry binding the child itself adds to that gate. Every generated surface that reads the resource's gate MUST admit the added role. An entry declaring both `additive: true` and `exclusive: true` MUST be reported as an authoring error.
+:::
+
 ## See also
 
 - [Entities & fields](/spec/entities) — `sensitive` as a field attribute, and the entity a scope attaches to.
