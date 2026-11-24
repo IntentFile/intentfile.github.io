@@ -745,6 +745,33 @@ With it, an unqualified row refuses the whole create-from with the authored mess
 
 The rule belongs to the mirror form of `items:`. The computed form — `items` as a list of synthetic lines over the source record — has no source rows to select from and guards each line with its own `when` cell. An `items` block that declares no `where:` behaves exactly as it did.
 
+### Consumed rows — `backLink:`
+
+Pass-through items are billed by a create-from: the billable expense lines of a project, its unbilled timesheet days, the materials a job consumed. Each row must reach the customer's invoice exactly once — but the mirror form never writes the rows it reads, so a second run selected them again, and a `billed eq false` rule had nobody to flip the flag. `backLink:` names a to-one of the items `from:` entity to the target, and each row that becomes a line is marked with the document it became a line of:
+
+```yaml
+generates:
+  - name: invoice-billable-expenses
+    from: Project
+    to: Invoice
+    map: { Project: id }
+    items:
+      from: ExpenseClaimItem       # selected by its Project reference - not the source's own lines
+      to: InvoiceItem
+      where:
+        - { field: billable, op: eq, value: true }
+      backLink: BilledInvoice      # { name: BilledInvoice, kind: manyToOne, to: Invoice, whenTargetDeleted: nullify }
+      map: { name: description, amount: amount }
+```
+
+The mark is written in the same unit as the invoice and its lines, so a refused run leaves every row unmarked. A marked row is never selected again — it needs no `where:` condition of its own, and `refuse:` does not count it as unqualified — so a run that finds nothing left is refused like any run no row qualifies for, instead of creating an empty invoice. Two runs on the same source take turns.
+
+What deleting the generated document does to the marks is the relation's own [`whenTargetDeleted`](/spec/relations): `nullify` frees the rows for the next run, the default `restrict` refuses the delete while a row is marked. A document that is voided rather than deleted keeps its marks.
+
+::: info Normative
+Every source row that becomes a target line MUST have its `backLink` relation set to the created target, in the same unit of work as the target and its lines; a refused generation MUST leave every row unmarked. A row whose `backLink` holds a value MUST NOT become a line and MUST NOT be counted as unqualified by `refuse`. A generation that finds no unmarked row satisfying `where` MUST be refused as a rule that qualifies no row is. Concurrent generations from the same source MUST NOT both select the same unmarked row. The mark MUST be written regardless of the row's user-facing immutability. A `backLink` that is not a non-composition `manyToOne` or `oneToOne` of the items `from` entity to the create-from's `to` entity in the model its `uses` names, and a `backLink` on items read from a report, MUST be reported as authoring errors.
+:::
+
 ### Recorded from the document it settles — `prompt:` and `link:`
 
 Some targets are recorded *from* a document and belong to it: a payment entered on the invoice it pays. Two things make that one action rather than two.
