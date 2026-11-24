@@ -75,6 +75,7 @@ The quick lookup surface: one line and a minimal snippet per construct. For rule
 | [`generates.prompt` / `generates.link`](/spec/glue#recorded-from-the-document-it-settles-prompt-and-link) | ask for what the source cannot supply (defaults read off the source), and write the source's link row to the new target in the same unit |
 | [`generates.event`](/spec/glue#event-driven-creation-event) | mint the document on a source event - a status write, a create, or a process step |
 | [`generates.event.mode`](/spec/glue#cardinality-mode-once-append) | one target per source (`once`, default) or one per delivered event (`append`) |
+| [`generates.sourceStatusOnRetire`](/spec/glue#a-retired-target-returns-its-source) | the completion hook's inverse: retiring the generated target - of this model or [of another](/spec/glue#a-target-another-model-owns) - returns the source, and the trigger re-fires |
 | [`reversals`](/spec/glue#reversals-reverse-a-booked-document-red-storno) | a manual Reverse on a posted document - its negated twin, linked both ways |
 | [`resolves`](/spec/glue#resolves-fill-a-relation-from-a-register-valid-on-a-date) | fill a to-one from the register row valid on the record's date |
 | [`transitions`](/spec/glue#transitions-guarded-status-flips) | guarded on-demand status flips (void / cancel / reopen) |

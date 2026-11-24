@@ -887,12 +887,32 @@ generates:
 Retiring the invoice returns the proforma to APPROVED. That is a real transition of the proforma, announced on the source's transition channel like any other, so the ordinary trigger re-fires, the guard steps over the retired invoice, and the replacement is minted. The reissue is the **ordinary path**, not a second creation route with semantics of its own — and nothing new declares what "retired" means: it is the same classification the guard reads, asked from the other end.
 
 ::: info Normative
-`sourceStatusOnRetire` requires an `event` to re-fire and `sourceStatus`, of which it is the inverse, and must name a different status — a write that leaves the status where it stands is not a transition and announces nothing. It must be rejected on a rule triggered only by a button, which carries no guard, so nothing blocks a replacement and the button is already the reissue; on an appending rule, which likewise frees no slot; and wherever the target's retirement cannot be recognised where the rule is declared: a target with no status relation, a nomenclature with no `cancelled` or `void` classification, or a target belonging to another model. When a target of this rule becomes retired and the source still stands at `sourceStatus`, the source must be moved to `sourceStatusOnRetire` and that move announced on the source's transition channel; only the status may be written, and the retired target must be left exactly as it is. When the source stands anywhere else, nothing happens. The move is a transition, so where the source declares a lifecycle the edge from `sourceStatus` to it must be declared. A file that declares no `sourceStatusOnRetire` regenerates unchanged.
+`sourceStatusOnRetire` requires an `event` to re-fire and `sourceStatus`, of which it is the inverse, and must name a different status — a write that leaves the status where it stands is not a transition and announces nothing. It must be rejected on a rule triggered only by a button, which carries no guard, so nothing blocks a replacement and the button is already the reissue; on an appending rule, which likewise frees no slot; and wherever the target's retirement cannot be recognised: a target with no status relation, or a nomenclature with no `cancelled` or `void` classification. When a target of this rule becomes retired and the source still stands at `sourceStatus`, the source must be moved to `sourceStatusOnRetire` and that move announced on the source's transition channel; only the status may be written, and the retired target must be left exactly as it is. When the source stands anywhere else, nothing happens. The move is a transition, so where the source declares a lifecycle the edge from `sourceStatus` to it must be declared. A file that declares no `sourceStatusOnRetire` regenerates unchanged.
 :::
 
 Two conditions make the reopen idempotent without a marker of its own. The source must still stand at `sourceStatus`, so a source that has travelled further down its own lifecycle is not dragged back. And no target of that source may still count — the at-most-once guard asked from this end. The second is the one that closes redelivery: delivery is at-least-once, so a retirement can arrive again after the replacement already exists, and by then the source is standing at `sourceStatus` once more. The reopen runs exactly when a creation would be allowed through.
 
 Whether a replacement follows immediately is decided by the trigger's own `when:`, not by the reopen — which only publishes the transition. Return the source to the status the trigger qualifies on and the reissue is immediate; return it to an earlier one (a draft, for correction) and it waits for a person to move it forward again.
+
+#### A target another model owns
+
+The target may belong to another model — a project milestone billed into the invoicing module's invoice. That model seeds and classifies the target's nomenclature, and the invoicing module cannot declare the reopen itself: it would have to use the milestone's model, which already uses it. So the reopen is declared on the source's side, and reads the owner's classification:
+
+```yaml
+generates:
+  - name: invoice-from-milestone
+    from: Milestone
+    to: SalesInvoice
+    uses: sales-invoices
+    map: { reference: number, milestone: id }   # milestone: a plain value field of the invoice
+    fromStatus: [REACHED]
+    sourceStatus: INVOICED
+    sourceStatusOnRetire: REACHED               # voiding the invoice returns the milestone
+```
+
+::: info Normative
+When the target of a create-from belongs to another model, a generator must resolve whether a status retires it from the owner model's `stage` classification of the target's nomenclature, and must reject a `sourceStatusOnRetire` whose owner target carries no `function: EntityStatus` relation or whose owner classifies no seed row `cancelled` or `void`. The reopen must be produced on the side of the source's model, which already depends on the owner; the owner model must not be required to declare anything about it. The source must be moved only after the target's retirement has taken effect: a retirement that is refused must leave the source unchanged. The at-most-once guard of an event-driven create-from over such a target must read the same classification.
+:::
 
 Prefer this over [`posts`](#posts-derived-rows-on-an-event) when the result is a document with line items — `posts` emits flat mapped rows and cannot reference the freshly created header. Prefer it over a button plus a [`wait`](/spec/processes#wait-park-the-process-on-a-data-event) step when the step is really waiting for a person to remember to click: an unclicked record parks its process instance indefinitely.
 
