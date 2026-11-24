@@ -196,6 +196,41 @@ entities:
 A cross-model relation must be `manyToOne` / `oneToOne`, its `model:` must be listed in `uses:`, and it **cannot** be `composition: true` — a detail cannot be owned across models. The consumer stores a projection of the owner entity so the FK dropdown resolves against the owner's live service.
 :::
 
+### A dependency that may be absent — `optional`
+
+A model may use another for one feature only - expense lines billed to a project - while some
+applications ship it without the other model. Marking the `uses:` entry `optional: true` lets the
+model be generated either way: where the other model is available it means what a `uses:` entry
+always meant; where it is not, the model is generated without it and without everything that
+depends on it, and the generator says what it left out.
+
+```yaml
+uses:
+  - { model: projects, optional: true }
+```
+
+Left out where the optional model is absent: the relations to it, every list item naming it by its
+alias (an `exists` / `notExists` check, a `related` register, a `generates`, a roll-up, a schedule, a
+report's union member), and every construct naming such a relation by a path from its own entity -
+the entity's `order`, `list` and `subtitle` entries and checks, a form's fields, a roll-up `via` it,
+and a report, which goes whole.
+
+::: info Normative
+`optional`, when present, MUST be a boolean; omitted, it is `false`. A relation whose `model:` is
+an optional entry MUST NOT be `required: true`, part of a `unique` key or the `per` of a number
+series. A generator MUST treat an optional model as ABSENT when, at generation, it cannot read
+that model's generated definition, and MUST then generate the declaring model exactly as if it
+declared none of: the `uses:` entry; every list item whose `model`, `uses` or `fromUses` names
+the entry; every relation to the model; and every `order`, `list` or `subtitle` entry, check,
+form field, roll-up `via` and report that names such a relation by a path walked from its own
+entity over relations of the same model. A check that stays MUST keep the message translation key
+it has when nothing is left out. The generator MUST report what it left out, and MUST NOT emit
+anything that refers to the absent model. A model that would not be valid with its optional
+entries left out this way MUST be rejected at parse time, whether or not the models are
+available. Where an optional model is available, a generator MUST treat the entry as a `uses:`
+entry without `optional`.
+:::
+
 ### One shared shell — contributions, not app-hopping
 
 Each project generates its own standalone shell (handy to run one domain in isolation). They **also** contribute their entities as grouped perspectives to a single **shared shell**, so the user never jumps between per-project UIs. Two pieces drive this:
