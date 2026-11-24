@@ -608,6 +608,22 @@ The parent may be owned by **another model**. When the roll-up's `via` relation 
 
 `capacity` and `balance` work on a cross-model parent, overdraw check included: the capacity is read off the parent, the balance is written alongside the sum, and the check that refuses a child row overdrawing the parent belongs to the child, which is local on this direction. That is what lets both sides of an n:m allocation be guarded from the module that owns the link rows - an invoice cannot be paid past its payable, and the payment it is paid from cannot be applied past its amount. A `balance` declared without a `capacity` is refused (the balance is `capacity - sum`). Only `status` stays local-only: it moves the parent through the owner's own status values.
 
+### Which children count — `where:`
+
+`where:` is a list of `{ field, op, value }` terms over the child's own properties, `eq` or `ne`, their AND; only the children that satisfy it are reduced. A term whose `value` is `null` tests whether the property has a value at all - the one test that selects the children where it has none, since every other comparison leaves an empty property out. A posted-entry count that must leave out a reversal and the entry it reversed reads:
+
+```yaml
+rollups:
+  - { name: postedEntries, entity: JournalEntry, via: CustomerPayment, field: postedEntries,
+      where: [ { field: Status,     op: eq, value: POSTED },
+               { field: Storno,     op: eq, value: null },
+               { field: ReversedBy, op: eq, value: null } ] }
+```
+
+::: info Normative
+A `where:` term with `value: null` MUST hold exactly when the property has no value under `op: eq`, and exactly when it has one under `op: ne`, on a field and on a to-one relation alike, and MUST NOT be reported as an authoring error. A roll-up MUST apply it the same way to the children it reduces and to a row its capacity check tests. `null` MUST NOT be read as a string literal or as a status name. A schedule's `where` and a create-from's `items: where` read a `null` value under `eq` / `ne` the same way.
+:::
+
 ## aggregates — keyed cross-entity totals
 
 A running total over one entity's rows, grouped by one or more of its to-one relations and materialised into a **separate entity** keyed by the same relations:
