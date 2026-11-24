@@ -45,6 +45,7 @@ The quick lookup surface: one line and a minimal snippet per construct. For rule
 | [`function: Attachment` / `Snapshot`](/spec/entities#attachments-and-snapshots) | a Files panel / immutable versioned printed copies |
 | [a print placeholder's alternative paths](/spec/presentation#printable-documents) | several paths in one placeholder - the first non-blank one is rendered |
 | [`forms`](/spec/processes#forms) | task data-entry pages |
+| [`forms[].items`](/spec/processes#items-the-lines-of-the-record) | a task form's read-only table of the lines of its record - a composition child of `forEntity` and the child's own fields |
 | [`actions`](/spec/processes#actions-custom-buttons) | developer-defined buttons opening custom pages |
 | [`view`](/spec/presentation#view-calendar-range-slots) | an additional calendar / range page, or a slot-booking page |
 | [`documentItemsLayout: chat`](/spec/presentation#documentitemslayout-chat-conversation-threads) | render a document's items as a chat thread |
