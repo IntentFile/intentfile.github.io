@@ -608,6 +608,22 @@ The parent may be owned by **another model**. When the roll-up's `via` relation 
 
 `capacity` and `balance` work on a cross-model parent, overdraw check included: the capacity is read off the parent, the balance is written alongside the sum, and the check that refuses a child row overdrawing the parent belongs to the child, which is local on this direction. That is what lets both sides of an n:m allocation be guarded from the module that owns the link rows - an invoice cannot be paid past its payable, and the payment it is paid from cannot be applied past its amount. A `balance` declared without a `capacity` is refused (the balance is `capacity - sum`). Only `status` stays local-only: it moves the parent through the owner's own status values.
 
+### The newest file, and the columns a child carries
+
+With `op: latest` the roll-up keeps `field` equal to the `of` value of the child with the greatest `by` - a date or timestamp of the child - and has no value when the parent has no children.
+
+A roll-up reads the columns its child carries as well as those the child declares: a `function: Attachment` or `function: Snapshot` child's `FileName`, `ContentType`, `FileSize`, `StoragePath` and `Uuid` (and a snapshot's `Version`), and the `CreatedAt`, `CreatedBy`, `UpdatedAt` and `UpdatedBy` of a file child or an `audit: true` entity. The newest upload mirrored onto its parent, one hop from every document that names the company:
+
+```yaml
+rollups:
+  - { name: latestLogo, entity: CompanyLogo, via: Company, field: logo,
+      op: latest, of: StoragePath, by: CreatedAt }
+```
+
+::: info Normative
+A roll-up's `of`, `by` and `where` MUST accept, matched case-insensitively, the columns its child carries: on a `function: Attachment` or `function: Snapshot` child `FileName`, `ContentType`, `FileSize`, `StoragePath`, `Uuid` and the four audit columns, on a snapshot also `Version`, and on an `audit: true` entity the four audit columns. They MUST be typed as `FileSize` a whole number, `CreatedAt` / `UpdatedAt` timestamps, `Version` an integer and the others text, and every type rule of the roll-up MUST apply to them. On any other child they MUST be reported as authoring errors. With `op: latest`, `of` and `by` are required, `by` MUST be a date or timestamp, `field` MUST have the type of `of`, and a parent with no children MUST have no value in `field`.
+:::
+
 ## aggregates — keyed cross-entity totals
 
 A running total over one entity's rows, grouped by one or more of its to-one relations and materialised into a **separate entity** keyed by the same relations:
