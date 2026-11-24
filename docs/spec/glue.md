@@ -953,6 +953,25 @@ Nothing else in the format reaches this shape: [`dependsOn`](/spec/relations) is
 
 **Normative.** A record that already carries the relation MUST be skipped, so a manual correction is never overwritten and a re-delivered event is a no-op. The resolved relation, the outcome and the status MUST be written as one targeted update of those columns only, leaving every other column of the record — and any concurrent write to it — untouched.
 
+### copy — the values the covering row names
+
+A register often carries the value itself: a price list names the price of a product, a tariff the rate of a service. `copy: { <register field>: <record field> }` writes those scalars onto the record, beside the relation `set` fills:
+
+```yaml
+resolves:
+  - name: priceFromList
+    event: { onCreate: SalesInvoiceItem }
+    set: priceListItem
+    from: PriceListItem
+    match: { product: product, priceList: priceList }
+    between: { start: validFrom, end: validTo, value: date }
+    copy: { price: price }
+```
+
+A copy is part of the record, not a correction made to it afterwards. It is made on the record's own write, so a line's amount, a required-value check and a document total see the copied price whichever path wrote the line; and a form that pre-fills the field from a [`dependsOn`](/spec/relations) shows the price the lookup finds instead, so the price a person sees is the price the line is stored with. The `dependsOn` value stays the fallback where no row covers.
+
+**Normative.** A copy is written only when exactly one row covers, field by field, and MUST NOT replace a value the record carries — a typed value, a value a create-from copied, or a field's declared default. Both sides of a pair MUST be plain fields of the same declared type. A copy MUST be made on the write the lookup's event names — the create for `onCreate`, the update for `onUpdate` — when the `when` guard holds, after the record's declared defaults and before its calculated fields and checks are evaluated. A generated form that pre-fills a copied field from its `dependsOn` MUST instead show the value the lookup would copy for the record as the form holds it, falling back to the `dependsOn` value when the lookup reports `notFound` or `ambiguous`.
+
 ## transitions — guarded status flips
 
 A per-record button that flips an entity's `function: EntityStatus` relation on demand — void, cancel, close, reopen — guarded by allowed source statuses and an optional condition. A flip from any other status (or a failing guard) is rejected; a successful flip publishes a `-transitioned` event that `postings` and integrations can observe.

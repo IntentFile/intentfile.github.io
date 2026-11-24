@@ -77,6 +77,7 @@ The quick lookup surface: one line and a minimal snippet per construct. For rule
 | [`generates.event.mode`](/spec/glue#cardinality-mode-once-append) | one target per source (`once`, default) or one per delivered event (`append`) |
 | [`reversals`](/spec/glue#reversals-reverse-a-booked-document-red-storno) | a manual Reverse on a posted document - its negated twin, linked both ways |
 | [`resolves`](/spec/glue#resolves-fill-a-relation-from-a-register-valid-on-a-date) | fill a to-one from the register row valid on the record's date |
+| [`resolves[].copy`](/spec/glue#copy-the-values-the-covering-row-names) | scalars of the covering row written onto empty record fields on the record's own write, and shown by the form before the save |
 | [`transitions`](/spec/glue#transitions-guarded-status-flips) | guarded on-demand status flips (void / cancel / reopen) |
 | [`postings`](/spec/glue#postings-source-document-to-ledger) | declarative source-document to balanced-document posting - on a status transition, on create for a lifecycle-less source, or on a declared enrichment phase |
 | [`aggregates`](/spec/glue#aggregates-keyed-cross-entity-totals) | keyed cross-entity totals materialised into their own entity |
