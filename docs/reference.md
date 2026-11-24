@@ -37,6 +37,7 @@ The quick lookup surface: one line and a minimal snippet per construct. For rule
 | [`relations` / `pickable`](/spec/relations#which-target-rows-a-picker-offers-pickable) | which target rows a to-one's picker offers: a failing row listed disabled with a message, or left out |
 | [`relations` / `whenMasterDeleted`](/spec/relations#deleting-the-master-whenmasterdeleted) | whether deleting a master deletes the composition children it owns, or is refused while they exist |
 | [`uses`](/spec/relations#multi-model-applications) | reuse entities owned by another intent model |
+| [`uses[].optional`](/spec/relations#a-dependency-that-may-be-absent-optional) | a dependency the application may not ship - where its model is absent, the relations to it and the checks, list entries, form fields, roll-ups and reports naming them are left out of the generated model and reported, instead of the generation failing |
 | [`related`](/spec/relations#related) | a read-only register of the records referencing this entity, on its own page |
 | [`processes`](/spec/processes#processes) | workflows: user tasks, decisions, waits, boundary timers |
 | [task assignment](/spec/processes#task-assignment) | route a user task to a role, the record owner, or a relation walk |
