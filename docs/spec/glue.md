@@ -122,6 +122,7 @@ A notification that cannot be acted on is a notification that gets ignored. "You
 | `{recordUrl}` | the record the message is about, opened in the application |
 | `{inboxUrl}` | the recipient's task inbox |
 | `{appUrl}` | the application's external base URL — the origin only |
+| `{shareUrl}` | a new [share link](/spec/entities#share-an-issued-document-through-a-link) to the issued copy of the record the message is about — `body` and `html` only |
 
 ```yaml
     notify:
@@ -130,13 +131,36 @@ A notification that cannot be acted on is a notification that gets ignored. "You
       body: "Open it here: {recordUrl}\nEverything waiting on you: {inboxUrl}"
 ```
 
-All three names are reserved at every notify call site, so an entity field of the same name never shadows them. `{recordUrl}` and `{inboxUrl}` are resolved to a complete address — **an intent never spells a route**. `{appUrl}` yields the origin alone; reach for it only for an address the other two cannot express, and append the rest as authored text.
+All four names are reserved at every notify call site, so an entity field of the same name never shadows them. `{recordUrl}` and `{inboxUrl}` are resolved to a complete address — **an intent never spells a route**. `{appUrl}` yields the origin alone; reach for it only for an address the other two cannot express, and append the rest as authored text.
 
 ::: info Why the intent never writes the path
 The routes belong to whatever renders the application. An intent that named one would encode a layout it does not own — correct only until that layout changes, and silently wrong afterwards. `{recordUrl}` states the destination; the implementation states the address.
 :::
 
 Inside a [`forEach`](#one-message-per-related-row-foreach) fan-out `{recordUrl}` links the ROW, like every other bare path in the block — the row is what that message is about.
+
+#### A share link in the message: `{shareUrl}`
+
+`{shareUrl}` is for the reader without an account: the customer a document is mailed to receives a link that opens its issued copy, where `{recordUrl}` would ask them to sign in. The link is created when the message is sent, under the rules of a link a user creates — the record in the `share: when` state, its copy stored, the declared `expiresAfterDays` — and is listed on the record, as created by the application, with the links users created.
+
+```yaml
+      - { name: mint, kind: serviceTask, args: { delegate: SalesInvoiceSnapshotGenerator, next: mail } }
+      - name: mail
+        kind: serviceTask
+        args:
+          notify:
+            to: Customer.email
+            subject: "Invoice {number}"
+            body: "Read it online: {shareUrl}"
+            outcome: mailOutcome
+          next: end
+```
+
+Bind the block to a step after the one that mints the copy, or to a transition that follows it: before the copy exists no link can be made, and the message is not sent.
+
+::: info Normative
+`{shareUrl}` MUST be refused at parse time on a notify block whose record's entity declares no `share:`, in a `subject`, inside a `forEach`, and on a `schedules[].notify` whose source is cross-model. When the message is sent, after its recipient is resolved, the implementation MUST create one share link to the record's issued copy under the rules a user's link is created under — the `when` state, a stored copy, the tenant's switch and its cap, the declared `expiresAfterDays` — record the application as its creator with the sending block named, and put the link's absolute URL, built on the configured external address of the application, in its place. When no link can be created the message MUST NOT be sent, and the failure MUST follow the block's delivery contract — `outcome:` and `onNotifyFailed` as for a failed delivery. A message with nobody to send to MUST NOT create a link. An implementation MUST NOT log the URL.
+:::
 
 ### One message per related row: `forEach`
 
