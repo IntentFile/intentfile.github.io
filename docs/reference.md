@@ -78,6 +78,7 @@ The quick lookup surface: one line and a minimal snippet per construct. For rule
 | [`reversals`](/spec/glue#reversals-reverse-a-booked-document-red-storno) | a manual Reverse on a posted document - its negated twin, linked both ways |
 | [`resolves`](/spec/glue#resolves-fill-a-relation-from-a-register-valid-on-a-date) | fill a to-one from the register row valid on the record's date |
 | [`transitions`](/spec/glue#transitions-guarded-status-flips) | guarded on-demand status flips (void / cancel / reopen) |
+| [`transitions.prompt`](/spec/glue#prompt-the-transition-asks-for-input) | ask for the record's own fields before the move and write the answers with the status; a required one left out refuses the move |
 | [`postings`](/spec/glue#postings-source-document-to-ledger) | declarative source-document to balanced-document posting - on a status transition, on create for a lifecycle-less source, or on a declared enrichment phase |
 | [`aggregates`](/spec/glue#aggregates-keyed-cross-entity-totals) | keyed cross-entity totals materialised into their own entity |
 | [`posts`](/spec/glue#posts-derived-rows-on-an-event) | derived ledger rows emitted idempotently on an event |
@@ -202,7 +203,8 @@ generates:
     map: { Order: id }
 
 transitions:
-  - { name: VoidInvoice, forEntity: Invoice, from: [ISSUED, SENT], setStatus: VOIDED, when: "Paid == 0", label: Void, icon: ban }
+  - { name: VoidInvoice, forEntity: Invoice, from: [ISSUED, SENT], setStatus: VOIDED, when: "Paid == 0", label: Void, icon: ban,
+      prompt: [ { field: voidReason, required: true } ] }   # asked before the move, written with it
 
 reversals:
   - { name: reverseEntry, forEntity: JournalEntry, when: "Status == POSTED", link: Storno, backLink: ReversedBy, negate: [debit, credit] }

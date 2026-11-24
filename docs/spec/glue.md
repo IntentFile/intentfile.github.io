@@ -976,6 +976,27 @@ When the entity declares a [`lifecycle`](/spec/entities#lifecycle-the-legal-stat
 
 A transition may carry a [notify block](#the-notify-block-and-attach-print) — "on Void, tell the customer" — attempted after the flip has committed, and unable to fail it.
 
+### prompt — the transition asks for input
+
+A transition may declare `prompt:` — the input a move must carry, asked when the button is pressed: the reason an issued invoice is voided, which the record's `immutableWhen` lock does not let anyone type on it first. Each entry names a field or a to-one relation of the record being moved, with the [`generates` prompt](#recorded-from-the-document-it-settles-prompt-and-link) grammar: `field`, and `required`.
+
+```yaml
+transitions:
+  - name: VoidSalesInvoice
+    forEntity: SalesInvoice
+    from: [ISSUED, SENT]
+    setStatus: VOIDED
+    prompt:
+      - { field: voidReason, required: true }
+      - { field: ReplacedBy }            # an optional to-one
+```
+
+The button opens an input form instead of the plain confirmation. The answers are written in the same write as the status, so the lock — a rule about user edits — does not refuse them, and a [check](/spec/entities#checks-declarative-validations) gated on the target status reads them. A required answer left out refuses the move, naming the field; an optional one left out leaves the field as stored. Declare a field only the move writes `readOnly: true`; a date stamped with the move is a `stampOn: { status }` field, not a prompt.
+
+::: info Normative
+A prompt entry MUST name a field or a to-one relation of `forEntity`, at most once, and MUST NOT name its `function: EntityStatus` relation, its primary key, a `number:` field, a `stampOn: { status }` field or a `timestamp` field; a transition prompt entry MUST NOT declare `default:`. A conforming generator MUST present the inputs before the move, and its transition endpoint MUST refuse a request that leaves a `required` input empty with a validation error naming that field, after the `from` and `when` guards and before anything is written. The answers MUST be written in the same write as the target status — the write that publishes the `-transitioned` event — and the checks gated on the target status MUST be evaluated on the record carrying them. That write MUST NOT be refused by `immutableWhen`. An optional input left empty MUST leave the stored value unchanged. A transition without `prompt:` MUST generate exactly as before.
+:::
+
 ## postings — source document to ledger
 
 When a (usually cross-model) source document reaches a status, create one local document with computed multi-line content. Idempotent via the back-reference; a missing rule or account skips (an unposted worklist), never throws.
