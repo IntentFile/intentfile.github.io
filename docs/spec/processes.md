@@ -214,6 +214,25 @@ A `relation.field` entry reads a field of a one-hop to-one relation, read-only �
 
 A conforming generator MUST report a field the owner model does not declare rather than dropping the control: a control bound to a value nothing ever provides looks exactly like a record that has no value.
 
+### items — the lines of the record
+
+A task form may show the **lines** of the record it is about - the rows of a composition child of `forEntity` that reference the record - as a read-only table under its fields, so the approver of an invoice sees what is billed and not only the total:
+
+```yaml
+forms:
+  - name: ApproveSalesInvoice
+    forEntity: SalesInvoice
+    fields: [number, Customer, total]
+    items: { entity: SalesInvoiceItem, fields: [name, quantity, price, total] }
+    actions: [approve, reject]
+```
+
+`items.entity` names the child, `items.fields` its own fields, one column each, each value presented as the same field is on the form. The rows are read when the form is opened, so the approver sees the lines as they stand, including those added after the process started - and they are read with the approver's own access, through the gate that governs reading the child's rows anywhere else.
+
+::: info Normative
+A `forms` entry declaring `items:` MUST be refused unless it declares `forEntity`, `items.entity` is a composition child of `forEntity` declared in the same model through a `manyToOne` composition relation, `items.fields` lists at least one field and every entry is a field the child declares itself, and the form is the form of a user task in processes that are all triggered on `forEntity`. A conforming generator MUST render the lines read-only, one column per listed field in order, each value presented as the same field is presented on the form. The rows MUST be the child's rows referencing the task's record, read when the form is opened, and MUST be read with the access of the person opening it, through the same gate that governs reading the child's rows elsewhere: a person who may not read them MUST NOT be shown them, and the form MUST NOT widen that gate. A form declaring no `items:` MUST generate exactly as before.
+:::
+
 ## actions — custom buttons
 
 Developer-defined buttons that open a custom page — the escape hatch when a workflow or a generated screen is not enough:
