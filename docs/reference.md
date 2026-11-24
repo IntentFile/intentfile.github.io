@@ -44,6 +44,7 @@ The quick lookup surface: one line and a minimal snippet per construct. For rule
 | [`retry` / `onError`](/spec/processes#retry-onerror-a-steps-failure-is-part-of-the-model) | a declared retry cycle and an error route for a calling step, with `{error}` recording the final attempt's message on the record |
 | [`function: Attachment` / `Snapshot`](/spec/entities#attachments-and-snapshots) | a Files panel / immutable versioned printed copies |
 | [`share`](/spec/entities#share-an-issued-document-through-a-link) | hands a record's issued copy to a reader without an account through a random, revocable, optionally expiring link; opt-in per entity |
+| [`share.expiry`](/spec/entities#share-an-issued-document-through-a-link) | the life of a share link read from the record it is created on - the first `{ when, days }` entry the record meets, `expiresAfterDays` otherwise |
 | [a print placeholder's alternative paths](/spec/presentation#printable-documents) | several paths in one placeholder - the first non-blank one is rendered |
 | [`forms`](/spec/processes#forms) | task data-entry pages |
 | [`actions`](/spec/processes#actions-custom-buttons) | developer-defined buttons opening custom pages |

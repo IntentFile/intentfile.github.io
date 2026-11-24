@@ -388,6 +388,8 @@ on:
     copy: SalesInvoiceCopy        # required - the function: Snapshot child whose stored file is served
     roles: [SalesInvoiceShare]    # required - who may create and revoke links; [] admits nobody
     expiresAfterDays: 0           # optional - 0 (the default) = permanent
+    expiry:                       # optional - the first entry the record meets sets the life
+      - { when: "Customer.Kind == 2", days: 30 }
 ```
 
 | Key | Meaning |
@@ -396,6 +398,17 @@ on:
 | `copy` | required - the [`function: Snapshot`](#attachments-and-snapshots) composition child of this entity whose stored file a link serves |
 | `roles` | required - the roles, declared under [`permissions`](/spec/surfaces#permissions), that may create and revoke links; an empty list admits nobody, the administrator included |
 | `expiresAfterDays` | optional - the life of a new link in whole days, 0 to 3650; 0, the default, is permanent |
+| `expiry` | optional - a list of `{ when, days }`: a link created while the record meets an entry's `when` lives that entry's `days` (the first that holds); `expiresAfterDays` otherwise - see *Life by record* below |
+
+**Life by record.** One life for every link of an entity is often wrong: the same invoice type is addressed to a
+business, whose link may stay, and to a private individual, whose document carries a home address
+and should not be reachable for ever. `expiry` reads the life from the record. Each entry pairs a
+condition with a number of days; when a link is created, the first entry whose condition holds for
+the record gives the link its life, and `expiresAfterDays` covers every record no entry matches.
+The condition is one `<property> ==|!= <literal>` term or a list of them, all of which must hold,
+over the record's own field or to-one, or one hop away over a to-one relation - such as the
+customer's kind, whose target may belong to another model (a nomenclature seeded there is named by
+its numeric id). The life is fixed when the link is created and stays with the link.
 
 Sharing is declared, never configured. The entities whose documents an anonymous reader may ever
 receive are exactly those that carry a `share:` block, so the question is answered by reading the
@@ -438,7 +451,7 @@ relation of the declaring entity. `copy` MUST name an entity of the same model t
 `function: Snapshot` and is a composition child of the declaring entity, and the declaring entity
 MUST be a printable document; any other `copy` MUST be rejected. Every entry of `roles` MUST be a
 role declared under `permissions`. `expiresAfterDays`, when present, MUST be a whole number from 0
-to 3650; omitted, it is 0. `share:` on an entity that carries a `personal: true` relation, or whose
+to 3650; omitted, it is 0. `expiry`, when present, MUST follow *Life by record*. `share:` on an entity that carries a `personal: true` relation, or whose
 composition ancestor carries one, MUST be rejected.
 
 **Opt-in.** A conforming generator MUST NOT make any file of an entity that declares no `share:`
@@ -469,6 +482,19 @@ process or task. The answer SHOULD forbid caching and indexing and SHOULD withho
 **Revocation and expiry.** A caller holding one of the declared `roles` MUST be able to revoke a
 link, and a revoked link MUST stop answering immediately, on every node of a deployment and across
 restarts. A link whose life has elapsed MUST stop answering; expiry MUST be enforced by the server.
+
+**Life by record.** `expiry`, when present, MUST be a non-empty list whose every entry declares
+`when` and `days` and no other key. `when` MUST be one `<property> ==|!= <literal>` term or a list
+of them, read off the declaring entity: a field or to-one relation of the entity, or a one-hop
+`<Relation>.<field>` over a to-one relation; a term that does not resolve, walks more than one hop,
+crosses a relation that is not a to-one, or compares a literal that is not a value of the compared
+type MUST be rejected, and a status name MUST resolve against the nomenclature of the relation it
+names. `days` MUST be a whole number from 0 to 3650. When a link is created - by a user's request or
+by a notify block - its life MUST be the `days` of the first entry, in declared order, whose every
+term holds for the stored record at that moment, and `expiresAfterDays` when none does; 0 is a
+permanent link. The life MUST NOT be taken from the request, and MUST NOT change once the link is
+created. A deployment setting that shortens the life of new links MUST apply to that life exactly
+as to `expiresAfterDays`, and MUST NOT lengthen it.
 
 **Leaving the state.** A link of a record that is no longer in the `when` state MUST NOT answer,
 whatever moved the record out of it, and MUST be revoked permanently: a record that returns to the
