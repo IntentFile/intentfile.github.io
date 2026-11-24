@@ -68,6 +68,7 @@ The quick lookup surface: one line and a minimal snippet per construct. For rule
 | [`outbound`](/spec/glue#outbound-departures-on-a-queue-or-a-topic) | a record emitted on a queue or a topic when an event fires |
 | [`exports`](/spec/glue#exports-a-file-in-an-exacting-format-over-a-query) | a fixed-width, delimited or XML file over an entity or a report, every run recorded on a ledger entity |
 | [`rollups`](/spec/glue#rollups-denormalised-parent-totals) | counts, sums, balance + status maintenance |
+| [`rollups.op: latest` / the carried columns](/spec/glue#the-newest-file-and-the-columns-a-child-carries) | the `of` value of the child with the newest `by`; `of` / `by` / `where` also read a file child's metadata and an audited child's audit columns |
 | [`settlements`](/spec/glue#settlements-payment-allocation) | auto-allocation of payments across open invoices |
 | [`expansions`](/spec/glue#expansions-child-rows-from-a-date-span) | generated child rows per day / week / month |
 | [`generates`](/spec/glue#generates-create-from) | one-click document-from-document cloning |
