@@ -434,6 +434,54 @@ The alternative — a hand-written calculated action that recomputes the offendi
 
 `status:` is optional, and its presence decides WHEN the rule is evaluated. Without it the rule holds on every user write. With it the rule is evaluated when the record is persisted carrying that status — the transition that sends the document, not the drafting before it, which is what makes the rule expressible at all: a record being typed has not chosen how it will be sent.
 
+### kind: exists — a write that needs a matching row of another entity
+
+Some writes are allowed only when a row of a THIRD entity says so: an expense line may be billed to a
+project only by an employee assigned to it, a timesheet entry booked only by a project member, an
+approval given only by someone from the requester's team. The permission is neither a value of the
+record nor of the records it points at - it is a row of another entity, often owned by another model.
+
+```yaml
+- name: ExpenseClaimItem
+  checks:
+    - { kind: exists, entity: EmployeeProjectAssignment, model: projects,
+        match: { Project: Project, Employee: ExpenseClaim.Employee },
+        when: "billable == true", verbs: [create, update],
+        message: "Only an employee assigned to the project bills an expense to it" }
+- name: ExpenseClaim
+  checks:
+    # the same rule, evaluated when the claim is submitted rather than while it is drafted
+    - { kind: exists, entity: EmployeeProjectAssignment, model: projects,
+        match: { Project: Project, Employee: Employee }, status: SUBMITTED,
+        message: "Only an employee assigned to the project submits a claim for it" }
+```
+
+`entity:` is the entity the row belongs to - one of this file, or, with `model:`, one owned by a
+`uses:` model. `match:` maps each property of that entity to a path on the record being written: a
+field or to-one of the record, or a one-hop `Relation.field` (the line's claim's employee). Every pair
+must hold on one row, and the values are passed to the lookup as bound parameters.
+
+A **match value that is absent skips the check**: a line with no project is not refused by a rule
+about projects. Whether the value must be there is `required:`, a separate declaration - the same
+reading `agree` gives an unset side.
+
+`when:` narrows the rule, in the `forbidWhen` grammar; `verbs:` may only say `[create, update]`, since
+a delete carries no values. `status:` is optional and decides WHEN the rule is evaluated, as for
+`requiredWhen`: without it on every user write, with it when the record is persisted carrying that
+status.
+
+::: info Normative
+A conforming generator MUST refuse a create or update of the record, with `message`, when `when`
+holds (or is absent), every `match` value is present, and no row of `entity` carries all of them; a
+`match` value that is absent MUST NOT refuse the write. With `status`, it MUST evaluate the check when
+the record is persisted carrying that status instead, and the gate requires a `function: EntityStatus`
+relation. The lookup MUST pass the values as bound parameters, never as query text. Each of the
+following MUST be reported as an authoring error: a missing `entity`, `match` or `message`; a `model`
+the file's `uses:` does not declare; an `entity` that is not declared, or is the record's own entity; a
+`match` path that does not resolve; a `match` property the target does not declare; a pair whose two
+sides are of different kinds; `verbs` naming `delete`; and `severity: warn`.
+:::
+
 ### severity: warn — warn and confirm instead of refuse
 
 Every other check refuses the write. Some rules are not refusals: a second customer with the same name is legitimate (two companies may share a registered name under different registration numbers), yet the person typing it should be asked first; a document line at price zero may be a gift or a typing mistake. The soft tier states those rules — the write stays possible, and the person saving it is told and confirms.
