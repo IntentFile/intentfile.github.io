@@ -37,6 +37,7 @@ fields:
 | `required` | NOT NULL; the generated required-value validation keys on this. A field that also carries a default (`defaultValue`, or `init` on a relation) is NOT demanded from the caller - the default satisfies it |
 | `length` | column length for string types |
 | `pattern` | an input-format regular expression the value must match (string / text fields only) |
+| `normalize` | the transforms that bring a `string` / `text` value to its stored form before the length check, `pattern` and `checks` read it - `trim`, `strip: "<characters>"`, `upper`, `lower`, `emptyToNull` (see [normalize](#normalize-the-stored-form)) |
 | `defaultValue` | the field's default: the column default, the reason a `required` field is not demanded from the caller, and the value a **new** row is seeded with in the UI (see [Field defaults](#defaultvalue-field-defaults)) |
 | `unique` | a UNIQUE constraint (e.g. a code or business key) |
 | `label` | what the field is called in the UI, replacing the humanized name (see [what a field is called](#label-countrylabels-what-a-field-is-called)) |
@@ -109,6 +110,45 @@ Copying everything else is wrong for the fields a business rule says must be fre
 The clone is built in this order: the built-in drops (primary key, audit columns, the `function: EntityStatus` relation, the `number:` field, every `readOnly` and `aggregate` property), then the `reset:` names, then the `defaults:` assignments, then every remaining property copied from the source. `now` resolves against the acting user's local calendar, never UTC - east of Greenwich a UTC-derived date is yesterday for the last hours of every day. `duplicable: true` alone behaves as it always did.
 
 Invalid, and reported when the model is read: a `reset` or `defaults` name that is not a field or a to-one relation of the entity; a name that is one of the built-in drops, which the *Duplicate* decided long before reading this block; the same name in both keys; `now` on a property that is not a `date`, `month` or `week`; a `reset` of a required value the create cannot fill on its own - a field with neither a `defaultValue` nor a create-time rule, or a to-one relation that declares no `init:` - which would make every copy fail; and a `duplicable` value that is neither `true`, `false` nor a mapping.
+
+## normalize — the stored form
+
+A `pattern` judges the value it is given. Where people type one value several ways - a phone number
+with spaces or dashes, an IBAN in lower case - declare the form it is stored in, and the pattern
+judges that:
+
+```yaml
+- { name: phone,     type: string, length: 20, normalize: [strip: " -()"], pattern: '^\+[1-9][0-9]{6,14}$' }
+- { name: iban,      type: string, length: 34, normalize: [strip: " ", upper] }
+- { name: code,      type: string, length: 10, normalize: lower }
+- { name: vatNumber, type: string, length: 20, unique: true, normalize: [trim, emptyToNull] }
+```
+
+`normalize` is one transform or a list of them. `trim` removes leading and trailing whitespace;
+`strip` removes every occurrence of each character it lists; `upper` and `lower` fold the case;
+`emptyToNull` stores a blank result as no value. They apply in that order - trim, strip, the case
+fold, `emptyToNull` - whatever order they are written in. A form applies the same step when the input
+loses focus, so the user sees the stored form before saving.
+
+An optional `unique` field needs `emptyToNull`. A uniqueness key lets any number of rows hold no
+value, but it compares an empty string like any other value, so without it the second record saved
+without a value is refused as a duplicate.
+
+::: info Normative
+`normalize` MUST be accepted on a `string` or `text` field only. A conforming generator MUST apply
+its transforms in the fixed order trim, strip, case fold, `emptyToNull`, on every write of the record
+through the generated application, so that every writer stores the same form, and MUST apply them
+before the length check, `pattern` and `checks` read the value: each of them judges the value as it
+will be stored. A value the transforms leave non-matching is still refused by `pattern`. A generated
+form MUST apply the same transforms when the input loses focus.
+`emptyToNull` MUST store a blank result - empty, or made only of whitespace, Unicode space separators
+or zero-width characters - as no value (null), and the uniqueness key, `pattern` and `checks` MUST
+read that no value.
+A generator MUST reject as an authoring error: `normalize` on any other type; an empty list; a
+transform listed twice; `upper` together with `lower`; a `strip` with no characters; an argument on
+`trim`, `upper`, `lower` or `emptyToNull`; an unknown transform; and `emptyToNull` on a `required`
+field. A field declaring no `normalize` MUST generate byte-identical output.
+:::
 
 ## label / countryLabels — what a field is called
 
